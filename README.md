@@ -4,7 +4,7 @@ An example travel agent for the fictional ACME company, built with [eve](https:/
 
 The agent searches hotels and shows them as cards and on a map, opens a hotel page with its rooms, prebooks the room you pick into a booking widget with a Pay button, books, lists and cancels bookings with a refund, researches the trip on the web with sources, and reads your ACME ride history. A side panel traces each turn: model calls, tokens, and tool calls with their input and output.
 
-It runs on a mocked world out of the box, so all you need is a model key.
+It runs on a mocked world out of the box, so all you need is an OpenAI API key.
 
 ![Hotel cards and the run trace](docs/screenshots/chat.png)
 
@@ -18,7 +18,7 @@ Node 24 and pnpm 10.
 
 ```bash
 pnpm install
-cp apps/agent/.env.example apps/agent/.env.local   # then set AI_GATEWAY_API_KEY
+cp apps/agent/.env.example apps/agent/.env.local   # then set OPENAI_API_KEY
 pnpm dev                                           # the agent on :3200, the web app on http://localhost:3000
 ```
 
@@ -30,7 +30,7 @@ Try "Find me a hotel in Le Marais, Paris for 4 to 6 December, two of us", open a
 
 [apps/agent/.env.example](apps/agent/.env.example) has the three keys that matter:
 
-- `AI_GATEWAY_API_KEY`: the model, through the [Vercel AI Gateway](https://vercel.com/ai-gateway). `AGENT_MODEL` picks another gateway model than the default `anthropic/claude-sonnet-5.5`. To use any OpenAI-compatible server instead, set `OPENAI_BASE_URL`, `OPENAI_API_KEY` and `AGENT_MODEL` to that server's model name. eve then assumes a 200k-token context window to decide when to compact; for a model with a smaller one, lower it in `apps/agent/agent/lib/model.ts`.
+- `OPENAI_API_KEY`: the model, OpenAI's `gpt-6.1-sol` through eve's built-in OpenAI provider. `AGENT_MODEL` picks another OpenAI model. To use another provider, change `model` in `apps/agent/agent/agent.ts` (see eve's agent configuration docs).
 - `NUITEE_API_KEY` and `EXA_API_KEY`: live hotels from [LiteAPI](https://www.liteapi.travel) (a `sand_…` sandbox key books test stays for free) and live web research from [Exa](https://exa.ai). Without both, the agent runs in demo mode.
 
 The agent works for one fictional account, Sam Rivera in Tallinn (`packages/travel/src/config.ts`).
@@ -51,7 +51,7 @@ Offers, bookings and the supplier's state are JSON files in `data/` (gitignored)
 ```text
 apps/agent/        @acme/agent: the eve app, the only server
   agent/
-    agent.ts           the model, and eve's default tools turned off
+    agent.ts           the model (OpenAI), and eve's default tools turned off
     instructions.md    the system prompt
     skills/            find-a-stay, the playbook for choosing a hotel, loaded on demand
     channels/eve.ts    eve's session API, with the per-turn context

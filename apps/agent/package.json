@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@acme/travel": "workspace:*",
-    "@ai-sdk/openai": "4.0.104",
     "ai": "7.0.156",
     "eve": "0.90.0",
     "zod": "4.6.7"
