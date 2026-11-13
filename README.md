@@ -33,7 +33,7 @@ Try "Find me a hotel in Le Marais, Paris for 4 to 6 December, two of us", open a
 - `AI_GATEWAY_API_KEY`: the model, through the [Vercel AI Gateway](https://vercel.com/ai-gateway). `AGENT_MODEL` picks another gateway model than the default `anthropic/claude-sonnet-5.5`. To use any OpenAI-compatible server instead, set `OPENAI_BASE_URL`, `OPENAI_API_KEY` and `AGENT_MODEL` to that server's model name. eve then assumes a 200k-token context window to decide when to compact; for a model with a smaller one, lower it in `apps/agent/agent/lib/model.ts`.
 - `NUITEE_API_KEY` and `EXA_API_KEY`: live hotels from [LiteAPI](https://www.liteapi.travel) (a `sand_…` sandbox key books test stays for free) and live web research from [Exa](https://exa.ai). Without both, the agent runs in demo mode.
 
-The agent works for one fictional account, Sam Rivera in Tallinn (`packages/travel/src/config.ts`).
+The agent works for one fictional account, Sam Rivera in Warsaw (`packages/travel/src/config.ts`).
 
 ## Demo mode
 
@@ -42,7 +42,7 @@ Every tool runs on a mocked world in `packages/travel/fixtures/world.json`:
 - **Hotels:** 298 hotels in 10 European cities, recorded from the LiteAPI sandbox, at fixed prices. Search by city, by 39 neighbourhoods (Le Marais, Trastevere, Shoreditch…) or by style.
 - **Booking:** a fake supplier for prebook, book, status and cancel. A refundable booking cancels with a full refund.
 - **Web research:** 43 short pages on events, getting around, neighbourhoods and weather in each city.
-- **ACME rides:** a month of rides around Tallinn, generated from today's date. They are always mocked.
+- **ACME rides:** a month of rides around Warsaw in PLN, generated from today's date. They are always mocked.
 
 Offers, bookings and the supplier's state are JSON files in `data/` (gitignored). Delete it to reset.
 

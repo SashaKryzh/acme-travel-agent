@@ -20,7 +20,7 @@ export default travelTool({
             time_zone: {
                 type: ["string", "null"],
                 description:
-                    "IANA time zone, such as Europe/Tallinn. Pass it when the user's zone is unknown, after they name their city or zone. A city name is not a zone. Null when the message already has a zone."
+                    "IANA time zone, such as Europe/Warsaw. Pass it when the user's zone is unknown, after they name their city or zone. A city name is not a zone. Null when the message already has a zone."
             }
         },
         required: ["from_date", "to_date", "time_zone"],
@@ -31,7 +31,7 @@ export default travelTool({
         // The account's zone wins; time_zone covers an account without one.
         const zone = validZone(ctx.account.time_zone) ?? validZone(args.time_zone);
         if (zone === undefined) {
-            fail("Error: the user's time zone is unknown. Ask for their city or time zone, then call again with time_zone set to an IANA zone such as Europe/Tallinn.");
+            fail("Error: the user's time zone is unknown. Ask for their city or time zone, then call again with time_zone set to an IANA zone such as Europe/Warsaw.");
         }
         const today = localDay(ctx.now, zone);
         const from = args.from_date ?? addDays(today, -WINDOW_DAYS);

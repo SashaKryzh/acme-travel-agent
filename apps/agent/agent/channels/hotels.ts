@@ -1,13 +1,13 @@
 import {loadHotelPage, OfferNotFoundError, toolContext} from "@acme/travel";
 import {defineChannel, GET} from "eve/channels";
-import {localDev, routeAuth} from "eve/channels/auth";
+import {localDev, none, routeAuth, vercelOidc} from "eve/channels/auth";
 
 /** The hotel page a card opens: details and rooms for the card's stay, from the offers the session has seen. Not a model tool. */
 export default defineChannel({
     routes: [
         GET("/acme/v1/hotel-page", async (request) => {
-            // The same callers as the chat channel: local development only.
-            const auth = await routeAuth(request, localDev());
+            // The same public-demo policy as the chat channel.
+            const auth = await routeAuth(request, [vercelOidc(), localDev(), none()]);
             if (auth instanceof Response) return auth;
             const url = new URL(request.url);
             const sessionId = url.searchParams.get("sessionId");

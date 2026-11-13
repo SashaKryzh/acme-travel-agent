@@ -18,11 +18,11 @@ export function account(): Account {
     return {
         name: "Sam Rivera",
         email: "sam.rivera@example.com",
-        home_city: "Tallinn",
-        country_code: "EE",
-        currency: "EUR",
+        home_city: "Warsaw",
+        country_code: "PL",
+        currency: "PLN",
         language: "en",
-        time_zone: "Europe/Tallinn"
+        time_zone: "Europe/Warsaw"
     };
 }
 

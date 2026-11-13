@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "web": {
+      "framework": "nextjs",
+      "root": "apps/web",
+      "buildCommand": "pnpm build"
+    },
+    "agent": {
+      "framework": "eve",
+      "root": "apps/agent",
+      "buildCommand": "pnpm build",
+      "outputDirectory": ".vercel/output"
+    }
+  },
+  "routes": [
+    { "src": "^/(eve|acme)/v1/(.*)$", "destination": { "type": "service", "service": "agent" } },
+    { "src": "^(.*)$", "destination": { "type": "service", "service": "web" } }
+  ]
+}
