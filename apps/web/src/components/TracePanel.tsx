@@ -1,32 +1,49 @@
 "use client";
 
 import {AlertTriangle, Brain, CheckCircle2, ChevronRight, Flag, Info, Loader2, MessageSquare, Sparkles, Wrench, XCircle} from "lucide-react";
-import {useState, type ReactNode} from "react";
+import {useEffect, useState, type ReactNode} from "react";
 
 import {cn} from "@/lib/utils";
 import type {TraceEvent, TurnTrace} from "@/lib/trace";
 
-/** The latest turn's timeline: model calls, tool calls with their input and output, and reasoning, live while it runs. */
-export function TracePanel({trace, running}: {trace: TurnTrace | null; running: boolean}) {
-    if (trace === null) {
-        return <p className="rounded-xl border border-dashed p-3 text-xs text-muted-foreground">Send a message to see the agent&apos;s run step by step.</p>;
+/** Every turn of the chat, oldest first: model calls, tool calls with their input and output, and reasoning. The latest is open and live while it runs. */
+export function TracePanel({traces, running}: {traces: TurnTrace[]; running: boolean}) {
+    if (traces.length === 0) {
+        return <p className="rounded-xl border border-dashed p-3 text-xs text-muted-foreground">Send a message to see the agent&apos;s runs step by step.</p>;
     }
+    return (
+        <div className="space-y-2" data-testid="trace">
+            {traces.map((trace, index) => {
+                const latest = index === traces.length - 1;
+                return <TurnCard key={trace.index} trace={trace} running={latest && running} defaultOpen={latest} />;
+            })}
+        </div>
+    );
+}
+
+function TurnCard({trace, running, defaultOpen}: {trace: TurnTrace; running: boolean; defaultOpen: boolean}) {
+    const [open, setOpen] = useState(defaultOpen);
+    useEffect(() => {
+        if (defaultOpen) setOpen(true);
+    }, [defaultOpen]);
     const pending = new Set(trace.events.flatMap((event) => (event.kind === "tool_start" ? [event.call_id] : [])));
     for (const event of trace.events) if (event.kind === "tool_end") pending.delete(event.call_id);
     return (
-        <div className="space-y-3" data-testid="trace">
-            <div className="rounded-xl bg-muted/60 p-2.5 text-xs">
+        <div className="space-y-3">
+            <button type="button" onClick={() => setOpen((value) => !value)} className="w-full rounded-xl bg-muted/60 p-2.5 text-left text-xs hover:bg-muted">
                 <div className="flex items-center gap-1.5 font-medium">
                     {running ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
-                    {running ? "Running" : "Last turn"}
+                    {running ? "Running" : `Turn ${trace.index}`}
+                    <span className="font-normal text-muted-foreground">{clock(trace.started_at)}</span>
+                    <ChevronRight className={cn("ml-auto size-3.5 text-muted-foreground transition-transform", open && "rotate-90")} />
                 </div>
                 <div className="mt-1 text-muted-foreground">
                     {seconds(trace.duration_ms)} · {trace.steps} model call{trace.steps === 1 ? "" : "s"} · {tokens(trace.input_tokens)} in
                     {cachedShare(trace.cached_input_tokens, trace.input_tokens)} · {tokens(trace.output_tokens)} out
                     {trace.cost_usd === null ? "" : ` · $${trace.cost_usd.toFixed(4)}`}
                 </div>
-            </div>
-            <ol className="space-y-1">
+            </button>
+            {open && <ol className="space-y-1">
                 {trace.events.map((event, index) => (
                     <TraceRow
                         key={index}
@@ -40,7 +57,7 @@ export function TracePanel({trace, running}: {trace: TurnTrace | null; running: 
                         <Loader2 className="size-3.5 animate-spin" /> working…
                     </li>
                 )}
-            </ol>
+            </ol>}
         </div>
     );
 }
@@ -126,6 +143,11 @@ function pretty(text: string): string {
     } catch {
         return text;
     }
+}
+
+function clock(at: string): string {
+    const date = new Date(at);
+    return Number.isNaN(date.getTime()) ? "" : date.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
 }
 
 function seconds(ms: number): string {

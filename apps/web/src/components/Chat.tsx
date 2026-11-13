@@ -3,14 +3,14 @@
 import type {BookingResult, BookingWidget, HotelCard} from "@acme/travel";
 import type {SessionStreamEvent} from "eve/client";
 import {useEveAgent, type EveMessage, type Interaction} from "eve/react";
-import {ArrowUp, Brain, Loader2, Plane, Plus, Search, Square} from "lucide-react";
+import {ArrowUp, Brain, Eye, Loader2, Plane, Plus, Search, Square} from "lucide-react";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 import {Button} from "@/components/ui/button";
 import {Textarea} from "@/components/ui/textarea";
 import {messageWithAction, visibleText, type UiAction} from "@/lib/actions";
 import {saveChat} from "@/lib/history";
-import {latestTurnTrace} from "@/lib/trace";
+import {turnTraces} from "@/lib/trace";
 
 import {ChatHistory} from "./ChatHistory";
 import {HotelSheet} from "./HotelSheet";
@@ -39,7 +39,7 @@ export function Chat({sessionId}: {sessionId?: string}) {
     const bottom = useRef<HTMLDivElement>(null);
     const busy = agent.status === "busy";
     const resuming = agent.status === "resuming";
-    const trace = useMemo(() => latestTurnTrace(agent.events), [agent.events]);
+    const traces = useMemo(() => turnTraces(agent.events), [agent.events]);
 
     useEffect(() => {
         bottom.current?.scrollIntoView({behavior: "smooth", block: "end"});
@@ -97,6 +97,11 @@ export function Chat({sessionId}: {sessionId?: string}) {
                         ACME Travel
                     </a>
                     <div className="ml-auto flex items-center gap-1">
+                        <Button variant="ghost" size="sm" asChild>
+                            <a href="/watches" target="_blank" rel="noopener">
+                                <Eye /> Watches
+                            </a>
+                        </Button>
                         <Button variant="ghost" size="sm" asChild>
                             <a href="/memory" target="_blank" rel="noopener">
                                 <Brain /> Memory
@@ -193,9 +198,9 @@ export function Chat({sessionId}: {sessionId?: string}) {
             </main>
 
             <aside className="hidden flex-col border-l bg-muted/30 lg:flex lg:w-1/3 xl:w-1/4">
-                <div className="border-b px-4 py-3 text-sm font-semibold">Run trace</div>
+                <div className="border-b px-4 py-3 text-sm font-semibold">Runs</div>
                 <div className="flex-1 overflow-y-auto p-3">
-                    <TracePanel trace={trace} running={busy} />
+                    <TracePanel traces={traces} running={busy} />
                 </div>
             </aside>
 

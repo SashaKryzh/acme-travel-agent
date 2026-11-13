@@ -35,6 +35,25 @@ export interface HotelOffer {
     tags?: string[];
 }
 
+/** A hotel stay the agent re-prices every day, with every price it saw. */
+export interface PriceWatch {
+    id: string;
+    hotel_id: string;
+    hotel_name: string;
+    checkin: string;
+    checkout: string;
+    adults: number;
+    children: number[];
+    currency: string;
+    guest_nationality: string;
+    /** Alert when the stay costs this much or less; null for any drop below the first price. */
+    target_price: number | null;
+    active: boolean;
+    created_at: string;
+    /** Newest last. A null price means the hotel had no rooms for the stay. */
+    history: {at: string; price: number | null}[];
+}
+
 export interface PricedOffer {
     offer: HotelOffer;
     stay: Stay;

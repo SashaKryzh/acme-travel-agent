@@ -1,5 +1,7 @@
 import {loadHotelPage, OfferNotFoundError, toolContext} from "@acme/travel";
 import {defineChannel, GET} from "eve/channels";
+
+import {watchSummary} from "../lib/priceWatch";
 import {localDev, none, routeAuth, vercelOidc} from "eve/channels/auth";
 
 /** The hotel page a card opens: details and rooms for the card's stay, from the offers the session has seen. Not a model tool. */
@@ -19,6 +21,13 @@ export default defineChannel({
                 const message = error instanceof Error ? error.message : String(error);
                 return Response.json({error: message}, {status: error instanceof OfferNotFoundError ? 404 : 502});
             }
+        }),
+        // The /watches page: every price watch with its history. Public, like the rest of the demo.
+        GET("/acme/v1/price-watches", async (request) => {
+            const auth = await routeAuth(request, [vercelOidc(), localDev(), none()]);
+            if (auth instanceof Response) return auth;
+            const watches = await toolContext("price-watch", request.signal).store.listPriceWatches();
+            return Response.json({watches: watches.map((watch) => ({...watchSummary(watch), history: watch.history}))});
         })
     ]
 });

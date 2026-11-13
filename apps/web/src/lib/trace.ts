@@ -13,6 +13,9 @@ export type TraceEvent =
     | {kind: "finish"; at_ms: number; outcome: string};
 
 export interface TurnTrace {
+    /** 1 for the session's first turn. */
+    index: number;
+    started_at: string;
     events: TraceEvent[];
     duration_ms: number;
     steps: number;
@@ -25,14 +28,16 @@ export interface TurnTrace {
 const INPUT_MAX = 2_000;
 const OUTPUT_MAX = 600;
 
-/** The latest turn's timeline, read from the session's eve events: model calls, reasoning, tool calls and the outcome. */
-export function latestTurnTrace(events: readonly SessionStreamEvent[]): TurnTrace | null {
-    const start = events.findLastIndex((event) => event.type === "turn.started");
-    if (start === -1) return null;
-    const turn = events.slice(start);
+/** Every turn's timeline, oldest first, read from the session's eve events: model calls, reasoning, tool calls and the outcome. */
+export function turnTraces(events: readonly SessionStreamEvent[]): TurnTrace[] {
+    const starts = events.flatMap((event, index) => (event.type === "turn.started" ? [index] : []));
+    return starts.map((start, index) => turnTrace(events.slice(start, starts[index + 1] ?? events.length), index + 1));
+}
+
+function turnTrace(turn: readonly SessionStreamEvent[], index: number): TurnTrace {
     const startedAt = Date.parse(turn[0]?.meta.at ?? "");
     const at = (event: SessionStreamEvent) => Date.parse(event.meta.at) - startedAt;
-    const trace: TurnTrace = {events: [], duration_ms: 0, steps: 0, input_tokens: null, cached_input_tokens: null, output_tokens: null, cost_usd: null};
+    const trace: TurnTrace = {index, started_at: turn[0]?.meta.at ?? "", events: [], duration_ms: 0, steps: 0, input_tokens: null, cached_input_tokens: null, output_tokens: null, cost_usd: null};
     const calls = new Map<string, {name: string; at: number}>();
     const textParts = new Set<string>();
     for (const event of turn) {

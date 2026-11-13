@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import {dataDir} from "../config";
-import type {BookingRecord, PricedOffer} from "../types";
+import type {BookingRecord, PricedOffer, PriceWatch} from "../types";
 import {readJson, updateJson} from "./jsonFile";
 
 const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
@@ -52,6 +52,14 @@ export class TravelStore {
             },
             (records) => records.find((record) => record.prebook_id === prebookId) as BookingRecord
         );
+    }
+
+    public listPriceWatches(): Promise<PriceWatch[]> {
+        return readJson<PriceWatch[]>(this.file("price-watches.json"), []);
+    }
+
+    public updatePriceWatches<R>(update: (watches: PriceWatch[]) => PriceWatch[] | Promise<PriceWatch[]>, result: (watches: PriceWatch[]) => R): Promise<R> {
+        return updateJson<PriceWatch[], R>(this.file("price-watches.json"), [], update, result);
     }
 
     private offersFile(sessionId: string): string {
