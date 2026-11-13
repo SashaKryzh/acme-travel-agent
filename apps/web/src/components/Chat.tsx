@@ -217,6 +217,8 @@ export function Chat({sessionId}: {sessionId?: string}) {
 function runningTasks(events: readonly SessionStreamEvent[]): string[] {
     const running = new Map<string, string>();
     for (const event of events) {
+        // A turn can't end while its tasks work, so a settled turn has none left.
+        if (event.type === "turn.settled") running.clear();
         const data = event.data as {taskId?: string; name?: string} | undefined;
         if (data?.taskId === undefined) continue;
         if (event.type === "task.started") running.set(data.taskId, data.name ?? "task");
