@@ -2,7 +2,7 @@ import {localDate, type Account} from "@acme/travel";
 
 /**
  * The context every turn carries after the user's message: when it was sent, then <now>, <location>, <account>,
- * <traveller_profile> and <plans>. Saved preferences and trips don't exist yet, so the last two are empty.
+ * and <plans>, which is empty since saved trips don't exist yet. Preferences come from eve memory.
  */
 export function turnContext(now: Date, account: Account): string {
     const zone = account.time_zone || null;
@@ -20,7 +20,6 @@ export function turnContext(now: Date, account: Account): string {
             email: account.email || null,
             language: account.language || null
         }),
-        `<traveller_profile>\n{}\n</traveller_profile>`,
         `<plans>\n[]\n</plans>`
     ].join("\n\n");
     const sentAt = `${localDate(now, zone ?? "UTC")} ${localTime(now, zone ?? "UTC")}`;
