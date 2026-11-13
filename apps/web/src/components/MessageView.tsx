@@ -22,11 +22,14 @@ export interface MessageActions {
 export function MessageView({message, actions}: {message: EveMessage; actions: MessageActions}) {
     if (message.role === "user") return <UserMessage message={message} />;
     const sources = collectSources(message.parts);
+    const replaced = replacedHotelGroups(message.parts);
     return (
         <div className="space-y-1" data-testid="assistant-message">
-            {message.parts.map((part, index) => (
-                <AssistantPart key={("id" in part && part.id) || ("callId" in part && part.callId) || index} part={part} actions={actions} />
-            ))}
+            {message.parts.map((part, index) =>
+                part.type === "tool" && replaced.has(part.callId) ? null : (
+                    <AssistantPart key={("id" in part && part.id) || ("callId" in part && part.callId) || index} part={part} actions={actions} />
+                )
+            )}
             {sources.length > 0 && <Sources sources={sources} />}
         </div>
     );
@@ -159,6 +162,21 @@ function activityLabel(name: string, input: Record<string, unknown>): string {
         default:
             return name;
     }
+}
+
+/** show_hotels again for the same stay replaces its cards, so only the latest group per stay in a reply is shown. */
+function replacedHotelGroups(parts: readonly EveMessagePart[]): Set<string> {
+    const latest = new Map<string, string>();
+    const replaced = new Set<string>();
+    for (const part of parts) {
+        if (part.type !== "tool" || part.name !== "show_hotels" || part.state !== "completed" || part.output === undefined) continue;
+        const {stay} = part.output as HotelGroup;
+        const key = [stay.checkin, stay.checkout, stay.adults, stay.children.join("."), stay.currency, stay.guest_nationality].join("|");
+        const previous = latest.get(key);
+        if (previous !== undefined) replaced.add(previous);
+        latest.set(key, part.callId);
+    }
+    return replaced;
 }
 
 function collectSources(parts: readonly EveMessagePart[]): WebSource[] {

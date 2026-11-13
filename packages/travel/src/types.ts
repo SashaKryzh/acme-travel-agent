@@ -91,6 +91,8 @@ export interface BookingWidget {
     /** Who books, and who stays: the same person unless the user booked for someone else. */
     holder: {name: string; email: string} | null;
     primary_guest: {name: string; email: string} | null;
+    /** False when a live supplier key could book for real. */
+    test_booking: boolean;
     action_label: string;
 }
 
@@ -121,6 +123,15 @@ export interface BookingPerson {
     email: string;
 }
 
+/** The room's terms as the supplier confirmed them at prebook, which the widget keeps when the guest changes. */
+export interface PrebookTerms {
+    room_name?: string;
+    board_name?: string;
+    refundable_tag?: string;
+    cancellation_deadline?: string;
+    price_changed_percent?: number;
+}
+
 export interface BookingRecord {
     prebook_id: string;
     offer_id: string;
@@ -138,6 +149,7 @@ export interface BookingRecord {
     hotel_confirmation_code?: string;
     holder?: BookingPerson;
     primary_guest?: BookingPerson;
+    terms?: PrebookTerms;
     created_at: string;
     updated_at: string;
 }

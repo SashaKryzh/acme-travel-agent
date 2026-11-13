@@ -1,6 +1,6 @@
 import {localDate, type BookingWidget} from "@acme/travel";
 
-import {bookingWidget, fail, travelTool, mapPrebook, mapRoomTerms, output, accountGuest, omitEmpty} from "../lib/travel";
+import {bookingWidget, fail, travelTool, mapPrebook, mapRoomTerms, output, accountGuest, omitEmpty, prebookTerms} from "../lib/travel";
 
 export default travelTool<BookingWidget>({
     description:
@@ -52,9 +52,10 @@ export default travelTool<BookingWidget>({
             price: prebook.price,
             currency: prebook.currency,
             ...(guest === undefined ? {} : {holder: guest, primary_guest: guest}),
+            terms: prebookTerms(prebook),
             created_at: now,
             updated_at: now
         }));
-        return output(await bookingWidget(ctx, record, prebook), omitEmpty(mapPrebook(prebook)));
+        return output(await bookingWidget(ctx, record), omitEmpty(mapPrebook(prebook)));
     }
 });

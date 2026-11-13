@@ -14,6 +14,11 @@ export function demoMode(): boolean {
     return !hasValue(process.env.NUITEE_API_KEY) || !hasValue(process.env.EXA_API_KEY);
 }
 
+/** Bookings take no payment in demo mode and with a LiteAPI sandbox key (sand_...); any other live key books for real. */
+export function testBookings(): boolean {
+    return demoMode() || (process.env.NUITEE_API_KEY ?? "").startsWith("sand_");
+}
+
 export function requiredEnv(name: "NUITEE_API_KEY" | "EXA_API_KEY"): string {
     const value = process.env[name];
     if (!hasValue(value)) throw new Error(`Missing ${name}. Set it in .env.local (see .env.example), or run in demo mode.`);

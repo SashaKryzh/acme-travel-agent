@@ -9,6 +9,7 @@ import {
     nights,
     resolveStay,
     stayKey,
+    testBookings,
     toHotelOffer,
     toolContext,
     type BookingPerson,
@@ -22,6 +23,7 @@ import {
     type NuiteeCancelPolicyInfo,
     type NuiteeHotelSummary,
     type NuiteePrebook,
+    type PrebookTerms,
     type PricedOffer,
     type RoomOffer,
     type Stay,
@@ -264,13 +266,24 @@ export function accountGuest(ctx: ToolContext): BookingPerson | undefined {
     return {first_name: first, last_name: rest.join(" "), email: ctx.account.email};
 }
 
-/** The booking widget: the stay, its final price and its guest, with a Pay button. */
-export async function bookingWidget(ctx: ToolContext, record: BookingRecord, prebook?: NuiteePrebook): Promise<BookingWidget> {
+/** The room's terms from the prebook response, kept on the booking record. */
+export function prebookTerms(prebook: NuiteePrebook): PrebookTerms {
+    const rate = prebook.roomTypes?.[0]?.rates?.[0];
+    return compact({
+        room_name: rate?.name,
+        board_name: rate?.boardName,
+        refundable_tag: rate?.cancellationPolicies?.refundableTag,
+        cancellation_deadline: firstCancelTime(rate?.cancellationPolicies?.cancelPolicyInfos),
+        price_changed_percent: prebook.priceDifferencePercent === 0 ? undefined : prebook.priceDifferencePercent
+    });
+}
+
+/** The booking widget: the stay, its final price and terms, and its guest, with a Pay button. */
+export async function bookingWidget(ctx: ToolContext, record: BookingRecord): Promise<BookingWidget> {
     const priced = (await ctx.store.getOffers(ctx.sessionId))[record.offer_id];
-    const rate = prebook?.roomTypes?.[0]?.rates?.[0];
+    const terms = record.terms ?? {};
     const holder = record.holder ?? accountGuest(ctx);
     const guest = record.primary_guest ?? holder;
-    const refundableTag = rate?.cancellationPolicies?.refundableTag ?? priced?.offer.refundable_tag;
     return compact({
         prebook_id: record.prebook_id,
         offer_id: record.offer_id,
@@ -278,10 +291,10 @@ export async function bookingWidget(ctx: ToolContext, record: BookingRecord, pre
         hotel_name: record.hotel_name,
         photo: priced?.offer.photo,
         address: priced?.offer.address,
-        room_name: rate?.name ?? record.room_name,
-        board_name: rate?.boardName ?? priced?.offer.board_name,
-        refundable: isRefundable(refundableTag),
-        cancellation_deadline: firstCancelTime(rate?.cancellationPolicies?.cancelPolicyInfos),
+        room_name: terms.room_name ?? record.room_name,
+        board_name: terms.board_name ?? priced?.offer.board_name,
+        refundable: isRefundable(terms.refundable_tag ?? priced?.offer.refundable_tag),
+        cancellation_deadline: terms.cancellation_deadline,
         checkin: record.checkin,
         checkout: record.checkout,
         nights: nights(record.checkin, record.checkout),
@@ -289,9 +302,10 @@ export async function bookingWidget(ctx: ToolContext, record: BookingRecord, pre
         children: priced?.stay.children ?? [],
         price: record.price,
         currency: record.currency,
-        price_changed_percent: prebook?.priceDifferencePercent === 0 ? undefined : prebook?.priceDifferencePercent,
+        price_changed_percent: terms.price_changed_percent,
         holder: person(holder),
         primary_guest: person(guest),
+        test_booking: testBookings(),
         action_label: PAY
     }) as BookingWidget;
 }

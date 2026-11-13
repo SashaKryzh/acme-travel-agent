@@ -65,7 +65,7 @@ export function BookingWidgetCard({
                     {widget.price_changed_percent !== undefined && (
                         <div className="text-xs text-amber-700">Price changed {widget.price_changed_percent}% since search</div>
                     )}
-                    <div className="text-[11px] text-muted-foreground">Test booking, no payment taken</div>
+                    {widget.test_booking && <div className="text-[11px] text-muted-foreground">Test booking, no payment taken</div>}
                 </div>
                 {state === "booked" ? (
                     <span className="flex items-center gap-1 text-sm font-medium">
