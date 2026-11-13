@@ -13,11 +13,35 @@
   ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", ".output/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        ".output/**"
+      ]
+    },
+    "web#build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "EVE_AGENT_URL"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env.local"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**"
+      ]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": [
+        "^typecheck"
+      ]
     },
     "dev": {
       "cache": false,
