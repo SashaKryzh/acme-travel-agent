@@ -30,7 +30,7 @@ Try "Find me a hotel in Le Marais, Paris for 4 to 6 December, two of us", open a
 
 [apps/agent/.env.example](apps/agent/.env.example) has the three keys that matter:
 
-- `AI_GATEWAY_API_KEY`: the model, through the [Vercel AI Gateway](https://vercel.com/ai-gateway). `AGENT_MODEL` picks another gateway model than the default `anthropic/claude-sonnet-5.5`. To use any OpenAI-compatible server instead, set `OPENAI_BASE_URL`, `OPENAI_API_KEY` and `AGENT_MODEL` to that server's model name.
+- `AI_GATEWAY_API_KEY`: the model, through the [Vercel AI Gateway](https://vercel.com/ai-gateway). `AGENT_MODEL` picks another gateway model than the default `anthropic/claude-sonnet-5.5`. To use any OpenAI-compatible server instead, set `OPENAI_BASE_URL`, `OPENAI_API_KEY` and `AGENT_MODEL` to that server's model name. eve then assumes a 200k-token context window to decide when to compact; for a model with a smaller one, lower it in `apps/agent/agent/lib/model.ts`.
 - `NUITEE_API_KEY` and `EXA_API_KEY`: live hotels from [LiteAPI](https://www.liteapi.travel) (a `sand_…` sandbox key books test stays for free) and live web research from [Exa](https://exa.ai). Without both, the agent runs in demo mode.
 
 The agent works for one fictional account, Sam Rivera in Tallinn (`packages/travel/src/config.ts`).
