@@ -1,4 +1,5 @@
 import {defineTool} from "eve/tools";
+import {always} from "eve/tools/approval";
 import {z} from "zod";
 
 import {bookingResult, json, mapCancellationPolicy, person, travel} from "../lib/travel";
@@ -11,6 +12,11 @@ export default defineTool({
         holder: person("Person making the booking"),
         primary_guest: person("Primary guest for the room. The other people staying were already counted during search")
     }),
+    // The user's Pay on the booking widget is eve's approval of this call.
+    approval: {
+        request: always(),
+        prompt: ({input}) => `Pay and book this stay for ${input.primary_guest.first_name} ${input.primary_guest.last_name}?`
+    },
     async execute({prebook_id, holder, primary_guest}, ctx) {
         const trip = travel(ctx);
         const record = await trip.store.findBooking((item) => item.prebook_id === prebook_id);

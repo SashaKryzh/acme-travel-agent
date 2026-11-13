@@ -1,8 +1,7 @@
 /** Something the user did on a card or the hotel page. It is sent as a line after the visible text of their message. */
 export type UiAction =
     | {type: "select_hotel"; offer_id: string; hotel_id: string; hotel_name: string}
-    | {type: "select_room"; offer_id: string; hotel_id: string; hotel_name: string; room_name: string | null}
-    | {type: "pay"; prebook_id: string};
+    | {type: "select_room"; offer_id: string; hotel_id: string; hotel_name: string; room_name: string | null};
 
 const MARKER = "\n\n[UI action] ";
 
@@ -13,8 +12,6 @@ export function describeAction(action: UiAction): string {
             return `The user tapped the hotel card "${action.hotel_name}" (hotel_id ${action.hotel_id}, offer_id ${action.offer_id}).`;
         case "select_room":
             return `The user selected a room${action.room_name === null ? "" : ` "${action.room_name}"`} at "${action.hotel_name}" (hotel_id ${action.hotel_id}, offer_id ${action.offer_id}).`;
-        case "pay":
-            return `The user tapped Pay on the booking widget (prebook_id ${action.prebook_id}).`;
     }
 }
 

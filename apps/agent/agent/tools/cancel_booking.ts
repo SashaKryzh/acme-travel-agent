@@ -1,4 +1,5 @@
 import {defineTool} from "eve/tools";
+import {always} from "eve/tools/approval";
 import {z} from "zod";
 
 import {bookingResult, travel} from "../lib/travel";
@@ -6,6 +7,7 @@ import {bookingResult, travel} from "../lib/travel";
 export default defineTool({
     description: "Cancel a booking by booking_id.",
     inputSchema: z.object({booking_id: z.string()}),
+    approval: {request: always(), prompt: () => "Cancel this booking? A refundable stay is refunded in full."},
     async execute({booking_id}, ctx) {
         const trip = travel(ctx);
         const record = await trip.store.findBooking((item) => item.booking_id === booking_id);
