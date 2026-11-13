@@ -40,7 +40,7 @@ export function HotelSheet({
         if (card === null || sessionId === undefined) return;
         const controller = new AbortController();
         const query = new URLSearchParams({sessionId, offerId: card.offer_id});
-        fetch(`/api/hotels/${encodeURIComponent(card.hotel_id)}?${query}`, {signal: controller.signal})
+        fetch(`/acme/v1/hotel-page?${query}`, {signal: controller.signal})
             .then(async (response) => {
                 const body = (await response.json()) as HotelPage | {error: string};
                 if ("error" in body) setError(body.error);

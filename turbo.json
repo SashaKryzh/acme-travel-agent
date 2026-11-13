@@ -1,0 +1,27 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "globalPassThroughEnv": [
+    "AI_GATEWAY_API_KEY",
+    "AGENT_MODEL",
+    "AGENT_CONTEXT_WINDOW_TOKENS",
+    "OPENAI_COMPATIBLE_*",
+    "NUITEE_API_KEY",
+    "EXA_API_KEY",
+    "ACME_*",
+    "EVE_AGENT_URL"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", ".output/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

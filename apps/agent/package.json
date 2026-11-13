@@ -1,0 +1,22 @@
+{
+  "name": "@acme/agent",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "eve dev --no-ui --no-default-extensions --port 3200",
+    "build": "eve build",
+    "typecheck": "tsc",
+    "info": "eve info"
+  },
+  "dependencies": {
+    "@acme/travel": "workspace:*",
+    "@ai-sdk/openai": "4.0.104",
+    "ai": "7.0.156",
+    "eve": "0.90.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2"
+  }
+}

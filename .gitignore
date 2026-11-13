@@ -9,3 +9,9 @@ data/
 # eve build and dev state
 .eve/
 .output/
+
+# Turborepo
+.turbo/
+
+# Next.js generates this; it flips between dev and build paths
+next-env.d.ts

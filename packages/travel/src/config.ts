@@ -44,7 +44,7 @@ export function account(): Account {
     };
 }
 
-/** The agent runs from the repo root and the web app from apps/web; both share the root's data folder. */
+/** The data folder sits at the workspace root, wherever eve runs the agent from inside it. */
 function repoRoot(): string {
     let dir = process.cwd();
     while (!existsSync(path.join(dir, "pnpm-workspace.yaml"))) {

@@ -7,10 +7,16 @@ settings:
 importers:
 
   .:
+    devDependencies:
+      turbo:
+        specifier: 2.11.11
+        version: 2.11.11
+
+  apps/agent:
     dependencies:
       '@acme/travel':
         specifier: workspace:*
-        version: link:packages/travel
+        version: link:../../packages/travel
       '@ai-sdk/openai':
         specifier: 4.0.104
         version: 4.0.104(zod@4.6.7)
@@ -19,7 +25,7 @@ importers:
         version: 7.0.156(zod@4.6.7)
       eve:
         specifier: 0.90.0
-        version: 0.90.0(ai@7.0.156(zod@4.6.7))(next@16.4.3(@types/node@26.6.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
+        version: 0.90.0(ai@7.0.156(zod@4.6.7))(next@16.4.3(@babel/core@7.29.13)(@types/node@26.6.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -33,9 +39,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@acme/travel':
-        specifier: workspace:*
-        version: link:../../packages/travel
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -44,7 +47,7 @@ importers:
         version: 0.5.2
       eve:
         specifier: 0.90.0
-        version: 0.90.0(ai@7.0.156(zod@4.6.7))(next@16.4.3(@types/node@26.6.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
+        version: 0.90.0(ai@7.0.156(zod@4.6.7))(next@16.4.3(@babel/core@7.29.13)(@types/node@26.6.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
       leaflet:
         specifier: 1.9.4
         version: 1.9.4
@@ -72,9 +75,6 @@ importers:
       remark-gfm:
         specifier: 4.0.1
         version: 4.0.1
-      server-only:
-        specifier: 0.0.1
-        version: 0.0.1
       shadcn:
         specifier: ^4.23.0
         version: 4.23.0
@@ -82,9 +82,9 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
     devDependencies:
-      '@next/env':
-        specifier: 16.4.3
-        version: 16.4.3
+      '@acme/travel':
+        specifier: workspace:*
+        version: link:../../packages/travel
       '@tailwindcss/postcss':
         specifier: 4.3.3
         version: 4.3.3
@@ -1453,6 +1453,36 @@ packages:
   '@ts-morph/common@0.27.0':
     resolution: {integrity: sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ==}
 
+  '@turbo/darwin-64@2.11.11':
+    resolution: {integrity: sha512-HMMeUIEAsmyIbSYn1ySvF/4gGMa0joiTMq4dQDuloIAnOpbtFT3JEiVsYnASdTWDXvplbRbZlqjU1EBeSR9G1A==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@turbo/darwin-arm64@2.11.11':
+    resolution: {integrity: sha512-+8iySNgqYWY6PZYUQzYu6zn0C04z2OEq1vQ6oMGsJ9sxN6wOpg1gzi1AJ5VKDHviWvMUjhqng51hTEQZOuiqYQ==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@turbo/linux-64@2.11.11':
+    resolution: {integrity: sha512-uImTKFYCFKsoFxjaXeJXlMPv4uU3OIIDjyzoIwYVqOtu9LnCZ/5/fzu/WP6+G9YfwGAPRplTHkKFfcI5t97RGw==}
+    cpu: [x64]
+    os: [android, linux]
+
+  '@turbo/linux-arm64@2.11.11':
+    resolution: {integrity: sha512-Y7xffSVfyyYRGzNy6PLdrFL4xXN6iTuR3W0SyJvH/yd3d4defA6dansZwJpPDVnIpD8a2Qn256DwY/Qin4Ip4g==}
+    cpu: [arm64]
+    os: [android, linux]
+
+  '@turbo/windows-64@2.11.11':
+    resolution: {integrity: sha512-e2WqNtkPGo3QDwNNwwBo89Dx3PtSJ9Wp9QuRNzn80rrRnSHB+1mfBMZTpdHjA8/G/sG9rl76TdWdpgVsimjRdg==}
+    cpu: [x64]
+    os: [win32]
+
+  '@turbo/windows-arm64@2.11.11':
+    resolution: {integrity: sha512-LURivfmgv34Osm8NR1gZGx4vdlux9KAgRM+FoooXNG0838ff0+akWZ76iPSke0NS2rsf7Z4Gw+YSaygzNTZuRA==}
+    cpu: [arm64]
+    os: [win32]
+
   '@tybys/wasm-util@0.10.4':
     resolution: {integrity: sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A==}
 
@@ -2765,9 +2795,6 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  server-only@0.0.1:
-    resolution: {integrity: sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==}
-
   shadcn@4.23.0:
     resolution: {integrity: sha512-lKgq7QPFgkV/6EOrMCwvEn7ZAw/YnM/grhxzJmK4cZdw3E4F3Ut2EmWvrn2E+vzJp1y/76mxU185OSkXo9Ff+Q==}
     engines: {node: '>=20.18.1'}
@@ -2913,6 +2940,10 @@ packages:
 
   tslib@2.9.1:
     resolution: {integrity: sha512-a4Ux9VKuIMHsOS7ENbEq6hK2ZGYIT27Rtl0E4eD9KqwxhKiQeMZE/9xb3IdYwWaSOyIBQLExhQgXDTYoiCxnWA==}
+
+  turbo@2.11.11:
+    resolution: {integrity: sha512-AI4UJbUE/2cVZdoXJ4PODc8qvrjhQQX9Fa93eKGOI6Ims/w7+kUIb9T1jhlgSnZcf+gtUruci/ohSwqtNNC5Yw==}
+    hasBin: true
 
   tw-animate-css@1.4.0:
     resolution: {integrity: sha512-7bziOlRqH0hJx80h/3mbicLW7o8qLsH5+RaLR2t+OHM3D0JlWGODQKQ4cxbK7WlvmUxpcj6Kgu6EKqjrGFe3QQ==}
@@ -4427,6 +4458,24 @@ snapshots:
       minimatch: 10.2.6
       path-browserify: 1.0.1
 
+  '@turbo/darwin-64@2.11.11':
+    optional: true
+
+  '@turbo/darwin-arm64@2.11.11':
+    optional: true
+
+  '@turbo/linux-64@2.11.11':
+    optional: true
+
+  '@turbo/linux-arm64@2.11.11':
+    optional: true
+
+  '@turbo/windows-64@2.11.11':
+    optional: true
+
+  '@turbo/windows-arm64@2.11.11':
+    optional: true
+
   '@tybys/wasm-util@0.10.4':
     dependencies:
       tslib: 2.9.1
@@ -4749,7 +4798,7 @@ snapshots:
 
   estree-util-is-identifier-name@3.0.0: {}
 
-  eve@0.90.0(ai@7.0.156(zod@4.6.7))(next@16.4.3(@types/node@26.6.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0):
+  eve@0.90.0(ai@7.0.156(zod@4.6.7))(next@16.4.3(@babel/core@7.29.13)(@types/node@26.6.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0):
     dependencies:
       ai: 7.0.156(zod@4.6.7)
       nitro: 3.0.260903-beta
@@ -5816,8 +5865,6 @@ snapshots:
 
   semver@7.8.6: {}
 
-  server-only@0.0.1: {}
-
   shadcn@4.23.0:
     dependencies:
       '@babel/core': 7.29.13
@@ -5993,6 +6040,15 @@ snapshots:
       strip-bom: 3.0.0
 
   tslib@2.9.1: {}
+
+  turbo@2.11.11:
+    optionalDependencies:
+      '@turbo/darwin-64': 2.11.11
+      '@turbo/darwin-arm64': 2.11.11
+      '@turbo/linux-64': 2.11.11
+      '@turbo/linux-arm64': 2.11.11
+      '@turbo/windows-64': 2.11.11
+      '@turbo/windows-arm64': 2.11.11
 
   tw-animate-css@1.4.0: {}
 

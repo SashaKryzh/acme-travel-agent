@@ -18,19 +18,17 @@ Node 24 and pnpm 10.12.1.
 
 ```bash
 pnpm install
-cp .env.example .env.local   # then set AI_GATEWAY_API_KEY
-pnpm dev                     # the agent on :3200 and the web app on :3000
+cp apps/agent/.env.example apps/agent/.env.local   # then set AI_GATEWAY_API_KEY
+pnpm dev                                           # the agent on :3200 and the web app on :3000
 ```
 
 Open http://localhost:3000. Try "Find me a hotel in Le Marais, Paris for 4 to 6 December, two of us", open a card, select a room, tap Pay, then ask it to cancel.
 
-`pnpm dev` runs two processes. To run them separately: `pnpm dev:agent` (eve on http://127.0.0.1:3200) and `pnpm dev:web` (Next.js on http://localhost:3000).
-
-Other commands: `pnpm typecheck` (agent, domain package and web app), `pnpm build` (the web app), `pnpm info` (what eve discovered: one system instruction and 15 tools).
+The repo is a pnpm workspace run with [Turborepo](https://turborepo.com). `pnpm dev`, `pnpm build` and `pnpm typecheck` run the task in every app and package. To run one app, filter it: `pnpm --filter @acme/agent dev` (eve on http://127.0.0.1:3200) or `pnpm --filter web dev` (Next.js on http://localhost:3000). `pnpm --filter @acme/agent info` shows what eve discovered: one system instruction and 15 tools.
 
 ## Environment
 
-Everything lives in one `.env.local` at the repo root; `eve dev` and the web app both read it. See [.env.example](.env.example).
+Each app has its own env file, as each would on Vercel. The agent's [apps/agent/.env.example](apps/agent/.env.example) holds everything below except `EVE_AGENT_URL`. The web app needs none: [apps/web/.env.example](apps/web/.env.example) only has `EVE_AGENT_URL`, for an agent that isn't on its default address.
 
 | Variable | Default | What it does |
 | --- | --- | --- |
@@ -43,7 +41,7 @@ Everything lives in one `.env.local` at the repo root; `eve dev` and the web app
 | `EXA_API_KEY` | | [Exa](https://exa.ai) key for live web research |
 | `ACME_DEMO` | | `1` forces demo mode, `0` forces live mode. Unset: demo unless both keys above are set |
 | `ACME_USER_NAME`, `ACME_USER_EMAIL`, `ACME_HOME_CITY`, `ACME_COUNTRY_CODE`, `ACME_CURRENCY`, `ACME_LANGUAGE`, `ACME_TIME_ZONE` | Sam Rivera, sam.rivera@example.com, Tallinn, EE, EUR, en, Europe/Tallinn | The ACME account the agent works for |
-| `EVE_AGENT_URL` | `http://127.0.0.1:3200` | Where the web app proxies `/eve/v1/*` to |
+| `EVE_AGENT_URL` | `http://127.0.0.1:3200` | Web app: where it proxies `/eve/v1/*` and `/acme/v1/*` to |
 
 ## Demo mode
 
@@ -60,22 +58,27 @@ Demo and live mode keep their data apart, in `data/demo/` and `data/live/` (giti
 ## Architecture
 
 ```text
-agent/                     the eve agent (the repo root is the eve project)
-├── agent.ts               model from the environment, eve's default tools off
-├── instructions.ts        the system prompt with its skill catalog and a note on the Pay button
-├── channels/eve.ts        the HTTP channel: localDev() auth, and the per-turn context
-├── tools/<name>.ts        the 15 tools, one file each
-└── lib/
-    ├── travel.ts          what the tools share: schemas, stay rules, offer lookup, the JSON the model reads
-    ├── turnContext.ts     <now>, <location>, <account>, <traveller_profile>, <plans>
-    ├── model.ts           AI Gateway id, or an OpenAI-compatible server
-    ├── prompts/system.md  the system prompt
-    └── skills/find-a-stay the playbook for searching and choosing a hotel
-packages/travel/           @acme/travel: LiteAPI and Exa clients, the JSON store, the demo world, the hotel page
-apps/web/                  Next.js 16 + shadcn/ui: the chat, cards, map, hotel page, booking widget and trace panel
+apps/
+├── agent/                       @acme/agent: the eve app, the only server
+│   └── agent/
+│       ├── agent.ts             model from the environment, eve's default tools off
+│       ├── instructions.ts      the system prompt with its skill catalog and a note on the Pay button
+│       ├── channels/eve.ts      eve's session API: localDev() auth, and the per-turn context
+│       ├── channels/hotels.ts   GET /acme/v1/hotel-page, the hotel page a card opens
+│       ├── tools/<name>.ts      the 15 tools, one file each
+│       └── lib/
+│           ├── travel.ts        what the tools share: schemas, stay rules, offer lookup, the JSON the model reads
+│           ├── turnContext.ts   <now>, <location>, <account>, <traveller_profile>, <plans>
+│           ├── model.ts         AI Gateway id, or an OpenAI-compatible server
+│           ├── prompts/         the system prompt
+│           └── skills/          find-a-stay, the playbook for searching and choosing a hotel
+└── web/                         web: Next.js 16 + shadcn/ui, frontend only
+packages/
+└── travel/                      @acme/travel: LiteAPI and Exa clients, the JSON store, the demo world, the hotel page
+turbo.json                       dev, build and typecheck across the workspace
 ```
 
-**One conversation, one owner.** eve owns the history. The browser talks to the agent directly with `useEveAgent` from `eve/react`, through a Next.js rewrite of `/eve/v1/*` to the eve server, so they share an origin. A conversation's URL is `/s/<sessionId>`, and reloading it replays the session from eve. The web app stores no chats and has no chat API. Its only route is `/api/hotels/[hotelId]`, the hotel page a card opens, which reads the same offers store as the tools.
+**One server, one owner.** The agent is the only server and eve owns the history. The web app is a frontend: the browser talks to the agent with `useEveAgent` from `eve/react`, and Next.js rewrites `/eve/v1/*` (eve's session API) and `/acme/v1/*` (the hotel page route) to the agent, so they share an origin. The web app imports only types from `@acme/travel`, needs no secrets, and has no API routes. A conversation's URL is `/s/<sessionId>`, and reloading it replays the session from eve. The agent keeps the offers each session has seen and the bookings in `data/` at the repo root (gitignored).
 
 **Turn context.** The channel's `onMessage` adds the turn context as eve `clientContext`: when the message was sent, then `<now>` (time, zone, local date, 24h clock), `<location>` (home city, country, currency), `<account>` (name, email, language), and empty `<traveller_profile>` and `<plans>`. It reaches every model call of the turn without being stored in the history. The prompt resolves relative dates against `<now>`, uses concrete dates, picks dates inside a loose timeframe, assumes a near-term weekend for a broad question, and asks only when the dates matter.
 
@@ -100,11 +103,11 @@ apps/web/                  Next.js 16 + shadcn/ui: the chat, cards, map, hotel p
 
 ## Limitations
 
-- **Local only.** The channel admits only `localDev()` callers: requests from this machine during `eve dev`. A deployment admits no one until it has real auth. **Follow-up:** add user auth to `agent/channels/eve.ts` (your app's session, Clerk, Auth.js or another `AuthFn`, see eve's auth guide), scope bookings and offers per user, and deploy the agent and the web app as one Vercel project.
+- **Local only.** Both agent channels admit only `localDev()` callers: requests from this machine during `eve dev`. A deployment admits no one until it has real auth. **Follow-up:** add user auth to `apps/agent/agent/channels/` (your app's session, Clerk, Auth.js or another `AuthFn`, see eve's auth guide) and scope bookings and offers per user.
+- **Not deployed yet.** On Vercel, each app would be its own project in this monorepo: `apps/agent` (deployed with `eve deploy`) and `apps/web` (Root Directory `apps/web`, with `EVE_AGENT_URL` set to the agent's URL). eve can also compose both into one project with `withEve` from `eve/vercel`. Neither has been tried here, and the agent's JSON files would need a database first, since a deployment's filesystem doesn't persist.
 - **One account.** The account is fixed by env, and `list_bookings` lists every booking in the data folder.
 - **Restarts.** After an `eve dev` restart, earlier sessions are dormant: they still replay, but a new message fails. Start a new chat, or restart with `eve dev --resume` to try to recover them.
 - **No chat list.** Conversations live in eve; the app has no index of them. Keep the URL to come back to one.
-- **Two writers on `data/`.** The agent and the web app's hotel page both write the offers file. Writes are atomic, but the write queue is per process; in practice they don't overlap.
 - **No approvals or questions.** eve's approvals, questions and sign-ins have no renderer here. Nothing in this agent opens one.
 - **Preview software.** eve 0.90 is a public preview with fast-moving APIs.
 

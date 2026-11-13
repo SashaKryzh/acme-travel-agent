@@ -7,22 +7,11 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "pnpm run --parallel \"/^dev:(agent|web)$/\"",
-    "dev:agent": "eve dev --no-ui --no-default-extensions --port 3200",
-    "dev:web": "pnpm --filter web dev",
-    "build": "pnpm --filter web build",
-    "typecheck": "tsc && pnpm -r typecheck",
-    "info": "eve info"
-  },
-  "dependencies": {
-    "@acme/travel": "workspace:*",
-    "@ai-sdk/openai": "4.0.104",
-    "ai": "7.0.156",
-    "eve": "0.90.0",
-    "zod": "4.6.7"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
-    "@types/node": "26.6.6",
-    "typescript": "7.0.2"
+    "turbo": "2.11.11"
   }
 }
