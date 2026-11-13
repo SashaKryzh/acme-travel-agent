@@ -1,47 +1,23 @@
 import {hotelOffers} from "@acme/travel";
+import {defineTool} from "eve/tools";
+import {z} from "zod";
 
-import {
-    fail,
-    FILTER_PARAMETER_NAMES,
-    FILTER_PARAMETER_PROPERTIES,
-    filterRatesRequest,
-    travelTool,
-    mapHotelOffer,
-    output,
-    rememberOffers,
-    STAY_PARAMETER_PROPERTIES,
-    stayFrom,
-    stayRatesRequest
-} from "../lib/travel";
+import {filters, json, mapHotelOffer, ratesRequest, rememberOffers, searchFields, stayFrom, travel} from "../lib/travel";
 
-export default travelTool({
+export default defineTool({
     description:
         "Search hotels by mood, style, or preferences for dates. Use when the ask is about vibe or taste: boutique, romantic, quiet spa hotel, family-friendly, a brand, or a hotel name. Put destination and preferences in the query text; do not use for pure area-only searches.",
-    parameters: {
-        type: "object",
-        properties: {
-            query: {
-                type: "string",
-                description: "Mood and preference search text, for example romantic boutique hotel in Lisbon or Crowne Plaza Warsaw"
-            },
-            ...STAY_PARAMETER_PROPERTIES,
-            ...FILTER_PARAMETER_PROPERTIES
-        },
-        required: ["query", "checkin", "checkout", "adults", "children", "currency", "guest_nationality", "limit", ...FILTER_PARAMETER_NAMES],
-        additionalProperties: false
+    inputSchema: z.object({
+        query: z.string().min(1).describe("Mood and preference search text, for example romantic boutique hotel in Lisbon"),
+        ...searchFields
+    }),
+    async execute(input, ctx) {
+        const trip = travel(ctx);
+        const stay = stayFrom(input, trip);
+        const rates = await trip.nuitee().searchRates({...ratesRequest(stay, input.limit, 1), ...filters(input), aiSearch: input.query}, trip.abortSignal);
+        const hotels = hotelOffers(rates, stay.checkin, stay.checkout).slice(0, input.limit);
+        await rememberOffers(trip, stay, hotels);
+        return {query: input.query, checkin: stay.checkin, checkout: stay.checkout, hotels};
     },
-    async run(args, ctx) {
-        const query = String(args.query).trim();
-        if (query.length === 0) fail("Error: query must not be empty");
-        const stay = stayFrom(args, ctx);
-        const limit = Number(args.limit);
-        const rates = await ctx
-            .nuitee()
-            .searchRates({...stayRatesRequest(stay, limit, 1), ...filterRatesRequest(args), aiSearch: query}, ctx.abortSignal)
-            .catch((error: unknown) => fail(`Error: hotel search failed (${error instanceof Error ? error.message : String(error)})`));
-        const offers = hotelOffers(rates, stay.checkin, stay.checkout).slice(0, limit);
-        await rememberOffers(ctx, stay, offers);
-        const meta = {query, checkin: stay.checkin, checkout: stay.checkout};
-        return output({...meta, total: offers.length, hotels: offers}, {...meta, hotels: offers.map(mapHotelOffer)});
-    }
+    toModelOutput: ({hotels, ...search}) => json({...search, hotels: hotels.map(mapHotelOffer)})
 });

@@ -3,9 +3,9 @@ import path from "node:path";
 
 import type {Account} from "./types";
 
-/** Demo mode serves hotels, booking and web research from the mocked world unless both live keys are set. */
+/** Demo mode serves hotels and booking from the mocked world unless a LiteAPI key is set. */
 export function demoMode(): boolean {
-    return !hasValue(process.env.NUITEE_API_KEY) || !hasValue(process.env.EXA_API_KEY);
+    return !hasValue(process.env.NUITEE_API_KEY);
 }
 
 /** Demo and live data never mix: each mode keeps its offers, bookings and supplier state in its own folder. */

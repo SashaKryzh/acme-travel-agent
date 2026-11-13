@@ -2,7 +2,7 @@
 
 import type {BookingResult, BookingWidget, HotelCard, HotelGroup, WebSource} from "@acme/travel";
 import type {EveMessage, EveMessagePart, EveToolPart} from "eve/react";
-import {AlertTriangle, Brain, Check, Globe, Loader2, MousePointerClick} from "lucide-react";
+import {AlertTriangle, Brain, Check, FileText, Globe, Loader2, MousePointerClick} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -100,6 +100,8 @@ function ToolPart({part, actions}: {part: EveToolPart; actions: MessageActions})
             return <BookingResultCard result={part.output as BookingResult} kind="book" />;
         case "cancel_booking":
             return <BookingResultCard result={part.output as BookingResult} kind="cancel" />;
+        case "write_file":
+            return <FileCard input={part.input as {filePath: string; content: string}} />;
         default:
             return <ToolActivity part={part} status="done" />;
     }
@@ -133,6 +135,21 @@ function replacedHotelGroups(parts: readonly EveMessagePart[]): Set<string> {
         latest.set(key, part.callId);
     }
     return replaced;
+}
+
+/** A document the agent wrote to its workspace, such as an itinerary: shown in full, since the user can't open the file. */
+function FileCard({input}: {input: {filePath: string; content: string}}) {
+    return (
+        <Collapsible defaultOpen className="my-2 rounded-xl border bg-card" data-testid="file-card">
+            <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium">
+                <FileText className="size-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">{input.filePath.split("/").at(-1)}</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="prose-chat border-t px-3 py-2 text-sm">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{input.content}</ReactMarkdown>
+            </CollapsibleContent>
+        </Collapsible>
+    );
 }
 
 function collectSources(parts: readonly EveMessagePart[]): WebSource[] {

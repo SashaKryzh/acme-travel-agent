@@ -58,7 +58,7 @@ export function Chat({sessionId}: {sessionId?: string}) {
                 if (booked.has(widget.prebook_id)) return "booked";
                 return widgets.get(widget.prebook_id) === callId ? "open" : "replaced";
             },
-            pay: (widget: BookingWidget) => send(widget.action_label, {type: "pay", prebook_id: widget.prebook_id}),
+            pay: (widget: BookingWidget) => send("Pay", {type: "pay", prebook_id: widget.prebook_id}),
             openHotel: setOpenHotel
         };
     }, [agent.messages, busy, resuming, send]);

@@ -39,23 +39,14 @@ export interface WorldSoldOut {
     to: string;
 }
 
-export interface WorldPage {
-    url: string;
-    title: string;
-    published: string;
-    keywords: string[];
-    text: string;
-}
-
 export interface World {
     currency: string;
     places: WorldPlace[];
     hotels: WorldHotel[];
     sold_out: WorldSoldOut[];
-    pages: WorldPage[];
 }
 
-/** The demo world: real sandbox hotels recorded once, with fixed prices, plus hand-written web pages. */
+/** The demo world: real sandbox hotels recorded once, with fixed prices. */
 export function loadWorld(): World {
     return worldJson as unknown as World;
 }

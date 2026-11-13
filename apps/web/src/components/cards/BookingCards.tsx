@@ -74,7 +74,7 @@ export function BookingWidgetCard({
                     <span className="text-xs text-muted-foreground">Updated below</span>
                 ) : (
                     <Button disabled={disabled} onClick={() => onPay(widget)} data-testid="pay">
-                        <CreditCard /> {widget.action_label}
+                        <CreditCard /> Pay
                     </Button>
                 )}
             </CardFooter>

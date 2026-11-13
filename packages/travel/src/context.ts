@@ -1,11 +1,9 @@
 import path from "node:path";
 
 import {account, dataDir, demoMode} from "./config";
-import {ExaClient, type ExaApi} from "./exa/client";
 import {NuiteeClient, type NuiteeApi} from "./nuitee/client";
 import {TravelStore} from "./store/store";
 import type {Account, RideHistoryApi} from "./types";
-import {WorldExa} from "./world/exa";
 import {WorldNuitee} from "./world/nuitee";
 import {WorldRides} from "./world/rides";
 import {loadWorld} from "./world/world";
@@ -15,7 +13,6 @@ export interface ToolContext {
     sessionId: string;
     store: TravelStore;
     nuitee: () => NuiteeApi;
-    exa: () => ExaApi;
     rides: () => RideHistoryApi;
     account: Account;
     now: Date;
@@ -24,25 +21,22 @@ export interface ToolContext {
 
 interface Clients {
     nuitee: () => NuiteeApi;
-    exa: () => ExaApi;
     rides: () => RideHistoryApi;
 }
 
 let clients: Clients | undefined;
 
-/** Live LiteAPI and Exa clients from their keys, or the mocked world in demo mode. ACME rides always come from the world. */
+/** The live LiteAPI client from its key, or the mocked world in demo mode. ACME rides always come from the world. */
 function toolClients(): Clients {
     if (clients !== undefined) return clients;
     const rides = new WorldRides();
     if (demoMode()) {
         const world = loadWorld();
         const nuitee = new WorldNuitee(world, path.join(dataDir(), "supplier"));
-        const exa = new WorldExa(world);
-        clients = {nuitee: () => nuitee, exa: () => exa, rides: () => rides};
+        clients = {nuitee: () => nuitee, rides: () => rides};
     } else {
         const nuitee = new NuiteeClient(process.env.NUITEE_API_KEY ?? "");
-        const exa = new ExaClient(process.env.EXA_API_KEY ?? "");
-        clients = {nuitee: () => nuitee, exa: () => exa, rides: () => rides};
+        clients = {nuitee: () => nuitee, rides: () => rides};
     }
     return clients;
 }

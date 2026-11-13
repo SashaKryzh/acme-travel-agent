@@ -1,26 +1,17 @@
-import {fail, travelTool, output, omitEmpty} from "../lib/travel";
+import {defineTool} from "eve/tools";
+import {z} from "zod";
 
-const HOTEL_REVIEWS_LIMIT = 10;
+import {json, travel} from "../lib/travel";
 
-export default travelTool({
-    description:
-        "Read what guests say about one hotel. Call it only when the user asks about guest opinions or something reviews would answer.",
-    parameters: {
-        type: "object",
-        properties: {hotel_id: {type: "string", description: "Hotel id from a search or get_hotel_details"}},
-        required: ["hotel_id"],
-        additionalProperties: false
-    },
-    async run(args, ctx) {
-        const hotelId = String(args.hotel_id).trim();
-        if (hotelId.length === 0) fail("Error: hotel_id must not be empty");
-        const data = await ctx
-            .nuitee()
-            .getReviews(hotelId, HOTEL_REVIEWS_LIMIT, ctx.abortSignal)
-            .catch((error: unknown) => fail(`Error: hotel reviews failed (${error instanceof Error ? error.message : String(error)})`));
+export default defineTool({
+    description: "Read what guests say about one hotel. Call it only when the user asks about guest opinions or something reviews would answer.",
+    inputSchema: z.object({hotel_id: z.string().min(1).describe("Hotel id from a search or get_hotel_details")}),
+    async execute({hotel_id}, ctx) {
+        const trip = travel(ctx);
+        const data = await trip.nuitee().getReviews(hotel_id, 10, trip.abortSignal);
         // Reviewer names are left out.
-        const reviews = {
-            hotel_id: hotelId,
+        return {
+            hotel_id,
             total_reviews: data.total,
             summary: data.sentimentAnalysis,
             latest_reviews: data.data.map((review) => ({
@@ -34,6 +25,6 @@ export default travelTool({
                 cons: review.cons
             }))
         };
-        return output(reviews, omitEmpty(reviews));
-    }
+    },
+    toModelOutput: json
 });

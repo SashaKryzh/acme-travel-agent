@@ -1,6 +1,5 @@
 export * from "./config";
 export * from "./context";
-export * from "./exa/client";
 export * from "./hotelPage";
 export * from "./nuitee/client";
 export {compact, hotelOffers, offerAlias, roomOffers, toHotelOffer, type RoomOffer} from "./nuitee/offers";

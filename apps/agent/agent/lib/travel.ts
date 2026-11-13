@@ -1,8 +1,5 @@
-// Parts the travel tools share: parameter schemas, the stay rules, offer lookup, and the JSON the model reads.
-// What the UI renders (hotel cards, the booking widget) is the tool's output; what the model reads is
-// `model_output`, which toModelOutput sends instead.
-import {defineTool} from "eve/tools";
-
+// What the travel tools share: input schemas, the stay rules, offer lookup, the booking widget, and the compact
+// JSON the model reads. A tool returns what the UI renders; its toModelOutput picks what the model needs.
 import {
     compact,
     isRefundable,
@@ -28,88 +25,54 @@ import {
     type Stay,
     type ToolContext
 } from "@acme/travel";
+import {z} from "zod";
 
-export const HOTEL_SEARCH_LIMIT_MAX = 100;
 export const MAX_HOTELS_PER_GROUP = 6;
-/** The label of the booking widget's button. */
-export const PAY = "Pay";
 
-type JsonSchema = Record<string, unknown>;
-
-/** What a tool returns: the data the UI renders, plus the text the model reads. */
-export type ToolOutput<T extends object = Record<string, unknown>> = T & {model_output: string};
-
-interface EveCall {
-    session: {id: string};
-    abortSignal?: AbortSignal;
+/** The travel context of an eve tool call: its session's offers, the store, the account and the clients. */
+export function travel(ctx: {session: {id: string}; abortSignal?: AbortSignal}): ToolContext {
+    return toolContext(ctx.session.id, ctx.abortSignal);
 }
 
-/**
- * A travel tool as an eve tool: a description and a plain JSON schema, and a run that returns UI data plus the
- * model's JSON. A thrown Error is the failure text the model reads.
- */
-export function travelTool<T extends object>(definition: {
-    description: string;
-    parameters: JsonSchema;
-    run: (args: Record<string, unknown>, ctx: ToolContext) => Promise<ToolOutput<T>>;
-}) {
-    return defineTool({
-        description: definition.description,
-        // A plain JSON Schema reaches the model as written; eve validates input against it.
-        inputSchema: definition.parameters as never,
-        async execute(input, ctx) {
-            const call = ctx as unknown as EveCall;
-            return (await definition.run(input as Record<string, unknown>, toolContext(call.session.id, call.abortSignal))) as never;
-        },
-        toModelOutput: (output) => ({type: "text", value: (output as unknown as ToolOutput).model_output})
-    });
+/** Model-facing JSON, without the facts Nuitee left blank. */
+export function json(value: unknown) {
+    return {type: "json" as const, value: omitEmpty(value) ?? {}};
 }
 
-export function fail(message: string): never {
-    throw new Error(message);
-}
+// Input schemas
 
-/** The model's JSON is written as given; pass it through omitEmpty to drop the facts Nuitee left blank. */
-export function output<T extends object>(ui: T, model: unknown): ToolOutput<T> {
-    return {...ui, model_output: typeof model === "string" ? model : JSON.stringify(model)};
-}
+const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-// Parameters
+export const stayFields = {
+    checkin: DATE.describe("Check-in date in YYYY-MM-DD"),
+    checkout: DATE.describe("Check-out date in YYYY-MM-DD"),
+    adults: z.number().int().min(1).describe("Adults in the room"),
+    children: z.array(z.number().int().min(0)).nullable().describe("Ages of children staying in the room, or null when there are no children"),
+    currency: z.string().nullable().describe("ISO 4217 code of a currency the user asked for, or null to use their home currency"),
+    guest_nationality: z.string().nullable().describe("ISO 3166-1 alpha-2 code of a nationality the user stated, or null to use their home country")
+};
 
-export const STAY_PARAMETER_PROPERTIES = {
-    checkin: {type: "string", description: "Check-in date in YYYY-MM-DD"},
-    checkout: {type: "string", description: "Check-out date in YYYY-MM-DD"},
-    adults: {type: "integer", description: "Adults in the room"},
-    children: {
-        type: ["array", "null"],
-        items: {type: "integer"},
-        description: "Ages of children staying in the room, or null when there are no children"
-    },
-    currency: {
-        type: ["string", "null"],
-        description: "ISO 4217 code of a currency the user asked for, or null to use their home currency"
-    },
-    guest_nationality: {
-        type: ["string", "null"],
-        description: "ISO 3166-1 alpha-2 code of a nationality the user stated, or null to use their home country"
-    },
-    limit: {type: "integer", description: `How many hotels to return. From 1 to ${HOTEL_SEARCH_LIMIT_MAX}`}
-} as const;
+export const searchFields = {
+    ...stayFields,
+    limit: z.number().int().min(1).max(100).describe("How many hotels to return, from 1 to 100"),
+    star_rating: z.array(z.number()).nullable().describe("Star ratings to include, in half stars, for example [4, 4.5, 5], or null for any"),
+    min_reviews_count: z.number().int().min(0).nullable().describe("Least number of guest reviews a hotel must have, or null for any"),
+    board_types: z
+        .array(z.enum(["room_only", "breakfast", "half_board", "full_board", "all_inclusive", "dinner", "lunch", "breakfast_and_dinner", "breakfast_and_lunch", "lunch_and_dinner"]))
+        .nullable()
+        .describe("Meal plans to include, or null for any"),
+    refundable_only: z.boolean().nullable().describe("True to return only refundable rates, or null for any"),
+    accessible_only: z.boolean().nullable().describe("True to return only hotels with advanced accessibility features, or null for any"),
+    sort: z.enum(["top_picks", "price_low_to_high", "price_high_to_low"]).nullable().describe("Order of results, or null for top picks")
+};
 
-export const BOARD_TYPES = [
-    "room_only",
-    "breakfast",
-    "half_board",
-    "full_board",
-    "all_inclusive",
-    "dinner",
-    "lunch",
-    "breakfast_and_dinner",
-    "breakfast_and_lunch",
-    "lunch_and_dinner"
-] as const;
+export const person = (description: string) =>
+    z.object({first_name: z.string(), last_name: z.string(), email: z.string()}).describe(description);
 
-const NUITEE_BOARD_CODES: Record<(typeof BOARD_TYPES)[number], string> = {
+type StayInput = z.infer<z.ZodObject<typeof stayFields>>;
+type SearchInput = z.infer<z.ZodObject<typeof searchFields>>;
+
+const BOARD_CODES: Record<NonNullable<SearchInput["board_types"]>[number], string> = {
     room_only: "RO",
     breakfast: "BI",
     half_board: "HB",
@@ -122,69 +85,14 @@ const NUITEE_BOARD_CODES: Record<(typeof BOARD_TYPES)[number], string> = {
     lunch_and_dinner: "LDI"
 };
 
-export const FILTER_PARAMETER_PROPERTIES = {
-    star_rating: {
-        type: ["array", "null"],
-        items: {type: "number"},
-        description: "Star ratings to include, in half stars, for example [4, 4.5, 5], or null for any"
-    },
-    min_reviews_count: {
-        type: ["integer", "null"],
-        minimum: 0,
-        description: "Least number of guest reviews a hotel must have, or null for any"
-    },
-    board_types: {
-        type: ["array", "null"],
-        items: {type: "string", enum: [...BOARD_TYPES]},
-        description: "Meal plans to include, or null for any"
-    },
-    refundable_only: {type: ["boolean", "null"], description: "True to return only refundable rates, or null for any"},
-    accessible_only: {
-        type: ["boolean", "null"],
-        description: "True to return only hotels with advanced accessibility features, or null for any"
-    },
-    sort: {
-        type: ["string", "null"],
-        enum: ["top_picks", "price_low_to_high", "price_high_to_low", null],
-        description: "Order of results, or null for top picks"
-    }
-} as const;
-
-export const FILTER_PARAMETER_NAMES = ["star_rating", "min_reviews_count", "board_types", "refundable_only", "accessible_only", "sort"];
-
-export function personSchema(description: string): JsonSchema {
-    return {
-        type: "object",
-        description,
-        properties: {first_name: {type: "string"}, last_name: {type: "string"}, email: {type: "string", format: "email"}},
-        required: ["first_name", "last_name", "email"],
-        additionalProperties: false
-    };
-}
-
 // Stays and searches
 
 /** Check-in today or later, check-out after it, currency and nationality from the account. */
-export function stayFrom(args: Record<string, unknown>, ctx: ToolContext): Stay {
-    try {
-        return resolveStay(
-            {
-                checkin: String(args.checkin),
-                checkout: String(args.checkout),
-                adults: Number(args.adults),
-                children: (args.children as number[] | null | undefined) ?? null,
-                currency: (args.currency as string | null | undefined) ?? null,
-                guest_nationality: (args.guest_nationality as string | null | undefined) ?? null
-            },
-            ctx.account,
-            ctx.now
-        );
-    } catch (error: unknown) {
-        return fail(`Error: ${error instanceof Error ? error.message : String(error)}`);
-    }
+export function stayFrom(input: StayInput, ctx: ToolContext): Stay {
+    return resolveStay(input, ctx.account, ctx.now);
 }
 
-export function stayRatesRequest(stay: Stay, limit: number, maxRatesPerHotel: number) {
+export function ratesRequest(stay: Stay, limit: number, maxRatesPerHotel: number) {
     return {
         checkin: stay.checkin,
         checkout: stay.checkout,
@@ -199,19 +107,16 @@ export function stayRatesRequest(stay: Stay, limit: number, maxRatesPerHotel: nu
     };
 }
 
-export function filterRatesRequest(args: Record<string, unknown>) {
-    const stars = args.star_rating as number[] | null;
-    const boards = args.board_types as Array<(typeof BOARD_TYPES)[number]> | null;
-    const sort = args.sort as string | null;
+export function filters(input: SearchInput) {
     return {
-        ...(stars !== null && stars.length > 0 ? {starRating: stars} : {}),
-        ...(args.min_reviews_count === null ? {} : {minReviewsCount: Number(args.min_reviews_count)}),
-        ...(boards !== null && boards.length > 0 ? {boardType: boards.map((board) => NUITEE_BOARD_CODES[board]).join(",")} : {}),
-        ...(args.refundable_only === true ? {refundableRatesOnly: true} : {}),
-        ...(args.accessible_only === true ? {advancedAccessibilityOnly: true} : {}),
-        ...(sort === "price_low_to_high"
+        ...(input.star_rating !== null && input.star_rating.length > 0 ? {starRating: input.star_rating} : {}),
+        ...(input.min_reviews_count === null ? {} : {minReviewsCount: input.min_reviews_count}),
+        ...(input.board_types !== null && input.board_types.length > 0 ? {boardType: input.board_types.map((board) => BOARD_CODES[board]).join(",")} : {}),
+        ...(input.refundable_only === true ? {refundableRatesOnly: true} : {}),
+        ...(input.accessible_only === true ? {advancedAccessibilityOnly: true} : {}),
+        ...(input.sort === "price_low_to_high"
             ? {sort: [{field: "price" as const, direction: "ascending" as const}]}
-            : sort === "price_high_to_low"
+            : input.sort === "price_high_to_low"
               ? {sort: [{field: "price" as const, direction: "descending" as const}]}
               : {})
     };
@@ -277,7 +182,7 @@ export function prebookTerms(prebook: NuiteePrebook): PrebookTerms {
     });
 }
 
-/** The booking widget: the stay, its final price and terms, and its guest, with a Pay button. */
+/** The booking widget: the stay, its final price and terms, and its guest. */
 export async function bookingWidget(ctx: ToolContext, record: BookingRecord): Promise<BookingWidget> {
     const priced = (await ctx.store.getOffers(ctx.sessionId))[record.offer_id];
     const terms = record.terms ?? {};
@@ -302,13 +207,17 @@ export async function bookingWidget(ctx: ToolContext, record: BookingRecord): Pr
         price: record.price,
         currency: record.currency,
         price_changed_percent: terms.price_changed_percent,
-        holder: person(holder),
-        primary_guest: person(guest),
-        action_label: PAY
+        holder: personText(holder),
+        primary_guest: personText(guest)
     }) as BookingWidget;
 }
 
-function person(value: BookingPerson | undefined): {name: string; email: string} | null {
+/** What the model reads about a widget: everything but the display-only photo and address. */
+export function widgetForModel({photo: _photo, address: _address, offer_id: _offerId, ...widget}: BookingWidget) {
+    return widget;
+}
+
+function personText(value: BookingPerson | undefined): {name: string; email: string} | null {
     return value === undefined ? null : {name: `${value.first_name} ${value.last_name}`, email: value.email};
 }
 
@@ -366,25 +275,7 @@ export function mapRoomTerms(offer: {room_name?: string; board_name?: string; re
     return {room_name: offer.room_name, meal_plan: offer.board_name, cancellation: mapCancellation(offer.refundable_tag)};
 }
 
-export function mapPrebook(data: NuiteePrebook) {
-    return {
-        prebook_id: data.prebookId,
-        hotel_id: data.hotelId,
-        price_amount: data.price,
-        price_currency: data.currency,
-        rooms: (data.roomTypes ?? []).flatMap((room) =>
-            (room.rates ?? []).map((rate) => ({
-                room_name: rate.name,
-                meal_plan: rate.boardName,
-                ...mapCancellationPolicy(rate.cancellationPolicies)
-            }))
-        ),
-        price_difference_percent: data.priceDifferencePercent,
-        cancellation_changed: data.cancellationChanges,
-        board_changed: data.boardChanges
-    };
-}
-
+/** A supplier booking as the model reads it. */
 export function mapBooking(data: NuiteeBooking) {
     return {
         booking_id: data.bookingId,
@@ -412,17 +303,10 @@ export function mapCancellationPolicy(policy: NuiteeCancellationPolicies | undef
     };
 }
 
-export function mapCancellation(tag: string | undefined): string | undefined {
-    switch (tag) {
-        case undefined:
-            return undefined;
-        case "RFN":
-            return "refundable";
-        case "NRFN":
-            return "non_refundable";
-        default:
-            return tag;
-    }
+function mapCancellation(tag: string | undefined): string | undefined {
+    if (tag === "RFN") return "refundable";
+    if (tag === "NRFN") return "non_refundable";
+    return tag;
 }
 
 function positive(value: number | undefined): number | undefined {
