@@ -20,8 +20,8 @@ export interface MessageActions {
     openHotel: (hotel: HotelCard) => void;
 }
 
-export function MessageView({message, actions}: {message: EveMessage; actions: MessageActions}) {
-    if (message.role === "user") return <UserMessage message={message} />;
+export function MessageView({message, actions, reactions}: {message: EveMessage; actions: MessageActions; reactions?: string[]}) {
+    if (message.role === "user") return <UserMessage message={message} reactions={reactions} />;
     const sources = collectSources(message.parts);
     const replaced = replacedHotelGroups(message.parts);
     return (
@@ -36,15 +36,24 @@ export function MessageView({message, actions}: {message: EveMessage; actions: M
     );
 }
 
-function UserMessage({message}: {message: EveMessage}) {
+function UserMessage({message, reactions}: {message: EveMessage; reactions?: string[]}) {
     const text = message.parts.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n");
     const shown = visibleText(text);
     return (
-        <div className="flex justify-end" data-testid="user-message">
+        <div className="flex flex-col items-end" data-testid="user-message">
             <div className="max-w-[80%] rounded-2xl rounded-br-md bg-primary px-4 py-2 text-sm whitespace-pre-wrap text-primary-foreground">
                 {shown.action && <MousePointerClick className="mr-1.5 inline size-3.5 opacity-60" />}
                 {shown.text}
             </div>
+            {reactions !== undefined && reactions.length > 0 && (
+                <div className="-mt-2 mr-2 flex gap-1" data-testid="reactions">
+                    {reactions.map((emoji) => (
+                        <span key={emoji} className="rounded-full border bg-card px-1.5 text-sm leading-6 shadow-xs">
+                            {emoji}
+                        </span>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -78,7 +87,8 @@ function AssistantPart({part, actions}: {part: EveMessagePart; actions: MessageA
                 </Collapsible>
             );
         case "tool":
-            return part.kind === "control" ? null : <ToolPart part={part} actions={actions} />;
+            // A reaction shows on the user's message, not as a line in the reply.
+            return part.kind === "control" || part.name === "react" ? null : <ToolPart part={part} actions={actions} />;
         default:
             return null;
     }

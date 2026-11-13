@@ -1,15 +1,18 @@
 "use client";
 
 import type {BookingResult, BookingWidget, HotelCard} from "@acme/travel";
+import type {SessionStreamEvent} from "eve/client";
 import {useEveAgent, type EveMessage, type Interaction} from "eve/react";
-import {ArrowUp, Brain, Loader2, Plane, Plus, Square} from "lucide-react";
+import {ArrowUp, Brain, Loader2, Plane, Plus, Search, Square} from "lucide-react";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 import {Button} from "@/components/ui/button";
 import {Textarea} from "@/components/ui/textarea";
-import {messageWithAction, type UiAction} from "@/lib/actions";
+import {messageWithAction, visibleText, type UiAction} from "@/lib/actions";
+import {saveChat} from "@/lib/history";
 import {latestTurnTrace} from "@/lib/trace";
 
+import {ChatHistory} from "./ChatHistory";
 import {HotelSheet} from "./HotelSheet";
 import {MessageView, type MessageActions} from "./MessageView";
 import {TracePanel} from "./TracePanel";
@@ -44,16 +47,17 @@ export function Chat({sessionId}: {sessionId?: string}) {
 
     const send = useCallback(
         (text: string, action?: UiAction) => {
-            if (busy || resuming || text.trim().length === 0) return;
+            // While the agent works, a message steers its turn: it reads it at the next step, and background tasks keep going.
+            if (resuming || text.trim().length === 0) return;
             void agent.send(messageWithAction(text.trim(), action)).catch(() => undefined);
         },
-        [agent, busy, resuming]
+        [agent, resuming]
     );
 
     const actions: MessageActions = useMemo(() => {
         const {widgets, booked, awaitingPay} = bookingState(agent.messages);
         return {
-            busy: busy || resuming,
+            busy: resuming,
             widgetState: (widget, callId) => {
                 if (booked.has(widget.prebook_id)) return {state: "booked"};
                 if (widgets.get(widget.prebook_id) !== callId) return {state: "replaced"};
@@ -65,6 +69,17 @@ export function Chat({sessionId}: {sessionId?: string}) {
         };
     }, [agent, busy, resuming]);
 
+    const tasks = useMemo(() => runningTasks(agent.events), [agent.events]);
+    const reactions = useMemo(() => reactionsByMessage(agent.messages), [agent.messages]);
+
+    // Remember this chat in the browser's list once it has a first message.
+    const sessionIdNow = agent.session?.sessionId;
+    const firstText = agent.messages.find((message) => message.role === "user")?.parts.find((part) => part.type === "text");
+    const title = firstText?.type === "text" ? visibleText(firstText.text).text.slice(0, 80) : undefined;
+    useEffect(() => {
+        if (sessionIdNow !== undefined && title !== undefined) saveChat({id: sessionIdNow, title, updatedAt: Date.now()});
+    }, [sessionIdNow, title, agent.messages.length]);
+
     const submit = () => {
         send(input);
         setInput("");
@@ -72,6 +87,7 @@ export function Chat({sessionId}: {sessionId?: string}) {
 
     return (
         <div className="flex h-full">
+            <ChatHistory currentId={sessionIdNow} />
             <main className="flex min-w-0 flex-1 flex-col">
                 <header className="flex items-center gap-2 border-b px-4 py-2.5">
                     <a href="/" className="flex items-center gap-2 text-sm font-semibold">
@@ -117,7 +133,7 @@ export function Chat({sessionId}: {sessionId?: string}) {
                             </div>
                         )}
                         {agent.messages.map((message) => (
-                            <MessageView key={message.id} message={message} actions={actions} />
+                            <MessageView key={message.id} message={message} actions={actions} reactions={reactions.get(message.id)} />
                         ))}
                         {(resuming || (busy && agent.messages.at(-1)?.role === "user")) && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -133,6 +149,12 @@ export function Chat({sessionId}: {sessionId?: string}) {
                     </div>
                 </div>
 
+                {tasks.length > 0 && (
+                    <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-6 pb-2 text-xs text-muted-foreground" data-testid="running-tasks">
+                        <Search className="size-3.5 animate-pulse" />
+                        {tasks.length === 1 ? "Researching in the background" : `${tasks.length} research tasks in the background`}. Keep chatting.
+                    </div>
+                )}
                 <form
                     className="mx-auto w-full max-w-3xl px-5 pb-5"
                     onSubmit={(event) => {
@@ -156,11 +178,12 @@ export function Chat({sessionId}: {sessionId?: string}) {
                             className="max-h-40 min-h-0 flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
                             data-testid="composer"
                         />
-                        {busy ? (
-                            <Button type="button" size="icon" variant="secondary" onClick={() => void agent.cancel()} title="Stop">
+                        {busy && (
+                            <Button type="button" size="icon" variant="secondary" onClick={() => void agent.cancel()} title="Stop everything, including background research">
                                 <Square className="fill-current" />
                             </Button>
-                        ) : (
+                        )}
+                        {(!busy || input.trim().length > 0) && (
                             <Button type="submit" size="icon" disabled={input.trim().length === 0 || resuming} title="Send" data-testid="send">
                                 <ArrowUp />
                             </Button>
@@ -179,7 +202,7 @@ export function Chat({sessionId}: {sessionId?: string}) {
             <HotelSheet
                 sessionId={agent.session?.sessionId}
                 card={openHotel}
-                busy={busy || resuming}
+                busy={resuming}
                 onClose={() => setOpenHotel(null)}
                 onAction={(text, action) => {
                     setOpenHotel(null);
@@ -188,6 +211,39 @@ export function Chat({sessionId}: {sessionId?: string}) {
             />
         </div>
     );
+}
+
+/** Tasks, such as hotel research, that started and haven't ended. */
+function runningTasks(events: readonly SessionStreamEvent[]): string[] {
+    const running = new Map<string, string>();
+    for (const event of events) {
+        const data = event.data as {taskId?: string; name?: string} | undefined;
+        if (data?.taskId === undefined) continue;
+        if (event.type === "task.started") running.set(data.taskId, data.name ?? "task");
+        if (event.type === "task.ended") running.delete(data.taskId);
+    }
+    return [...running.values()];
+}
+
+/** The emoji the agent reacted with, on the user message each react call followed. */
+function reactionsByMessage(messages: readonly EveMessage[]): Map<string, string[]> {
+    const reactions = new Map<string, string[]>();
+    let lastUser: string | undefined;
+    for (const message of messages) {
+        if (message.role === "user") {
+            lastUser = message.id;
+            continue;
+        }
+        for (const part of message.parts) {
+            if (part.type !== "tool" || part.name !== "react" || lastUser === undefined) continue;
+            const emoji = (part.input as {emoji?: string} | undefined)?.emoji;
+            if (emoji === undefined) continue;
+            const list = reactions.get(lastUser) ?? [];
+            if (!list.includes(emoji)) list.push(emoji);
+            reactions.set(lastUser, list);
+        }
+    }
+    return reactions;
 }
 
 /** For each prebook: the call that showed its latest widget, whether book went through, and a book call waiting for Pay. */
