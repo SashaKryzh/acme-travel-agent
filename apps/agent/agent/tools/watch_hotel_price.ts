@@ -6,6 +6,8 @@ import {z} from "zod";
 import {currentPrice, watchSummary} from "../lib/priceWatch";
 import {json, stayFields, stayFrom, travel} from "../lib/travel";
 
+const MAX_ACTIVE_WATCHES = 20;
+
 export default defineTool({
     description:
         "Watch the price of one hotel for a stay: a scheduled job checks it every morning and records the cheapest price. Use when the user asks to watch, track or alert them about a hotel's price. Checks the price right away too.",
@@ -18,6 +20,8 @@ export default defineTool({
     label: {start: ({hotel_name}) => `Watching ${hotel_name}`},
     async execute(input, ctx) {
         const trip = travel(ctx);
+        const active = (await trip.store.listPriceWatches()).filter((watch) => watch.active).length;
+        if (active >= MAX_ACTIVE_WATCHES) throw new Error(`There are already ${MAX_ACTIVE_WATCHES} active price watches. Stop one first.`);
         const stay = stayFrom(input, trip);
         const watch = {
             id: randomUUID().slice(0, 8),

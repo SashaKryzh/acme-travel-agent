@@ -33,6 +33,8 @@ Try "Find me a hotel in Le Marais, Paris for 4 to 6 December, two of us", open a
 - `OPENAI_API_KEY`: the model, OpenAI's `gpt-6.1-sol` through eve's built-in OpenAI provider, and OpenAI's hosted web search. `AGENT_MODEL` picks another OpenAI model. To use another provider, change `model` in `apps/agent/agent/agent.ts` (see eve's agent configuration docs).
 - `NUITEE_API_KEY` (optional): live hotels from [LiteAPI](https://www.liteapi.travel). A `sand_…` sandbox key books test stays for free. Without it, the agent runs in demo mode.
 
+Set `SITE_PASSWORD` in the deployment to put the whole site, web app and agent API, behind one shared team password; the browser asks for it once (any username). Leave it unset locally.
+
 The agent works for one fictional account, Sam Rivera in Warsaw (`packages/travel/src/config.ts`).
 
 ## Demo mode
