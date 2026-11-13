@@ -1,4 +1,6 @@
-import {requestJson} from "../http";
+import {setTimeout} from "node:timers/promises";
+
+import {ApiError, requestJson} from "../http";
 import type {
     NuiteeBookRequest,
     NuiteeBooking,
@@ -16,6 +18,8 @@ const BOOKING_API = "https://book.liteapi.travel/v3.0";
 const TIMEOUT_MS = 20_000;
 /** Booking calls wait on the supplier, so they get longer than search. */
 const BOOKING_TIMEOUT_MS = 60_000;
+/** Waits of about 1, 2, 4 and 8 seconds. */
+const RATE_LIMIT_RETRIES = 4;
 
 /** What tools need from Nuitee. The demo world implements it with recorded hotels. */
 export type NuiteeApi = Pick<
@@ -79,8 +83,16 @@ export class NuiteeClient {
         )?.data;
     }
 
-    private data<T>(path: string, options: RequestOptions): Promise<T | undefined> {
-        return this.request<T>(DATA_API, path, options, TIMEOUT_MS);
+    /** Search and data calls retry when Nuitee rate-limits them, which happens when several searches run at once. */
+    private async data<T>(path: string, options: RequestOptions): Promise<T | undefined> {
+        for (let attempt = 0; ; attempt++) {
+            try {
+                return await this.request<T>(DATA_API, path, options, TIMEOUT_MS);
+            } catch (error) {
+                if (!(error instanceof ApiError && error.status === 429) || attempt === RATE_LIMIT_RETRIES || options.signal?.aborted) throw error;
+                await setTimeout(1_000 * 2 ** attempt + Math.random() * 1_000, undefined, {signal: options.signal});
+            }
+        }
     }
 
     private booking<T>(path: string, options: RequestOptions): Promise<T | undefined> {

@@ -17,6 +17,8 @@ async function snapshot<T>(key: string, fallback: T): Promise<{value: T; etag?: 
     return {value: JSON.parse(await new Response(response.stream).text()) as T, etag: response.blob.etag};
 }
 
+const ATTEMPTS = 12;
+
 export async function readBlobJson<T>(file: string, fallback: T): Promise<T> {
     return (await snapshot(blobPath(file), fallback)).value;
 }
@@ -24,7 +26,7 @@ export async function readBlobJson<T>(file: string, fallback: T): Promise<T> {
 /** Conditional writes also serialize updates made by different serverless instances. */
 export async function updateBlobJson<T, R>(file: string, fallback: T, update: (current: T) => T | Promise<T>, result?: (next: T) => R): Promise<R> {
     const key = blobPath(file);
-    for (let attempt = 0; attempt < 8; attempt++) {
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
         const {value, etag} = await snapshot(key, fallback);
         const next = await update(value);
         try {
@@ -35,10 +37,13 @@ export async function updateBlobJson<T, R>(file: string, fallback: T, update: (c
             });
             return result === undefined ? next as unknown as R : result(next);
         } catch (error) {
+            // Another instance wrote first. The SDK reports an ETag mismatch as a plain BlobError too.
             const conflict = error instanceof BlobPreconditionFailedError ||
+                (error instanceof BlobError && /precondition|etag mismatch/i.test(error.message)) ||
                 (etag === undefined && error instanceof BlobError && /already exists/i.test(error.message));
-            if (!conflict || attempt === 7) throw error;
-            await setTimeout(25 * (attempt + 1));
+            if (!conflict || attempt === ATTEMPTS - 1) throw error;
+            // Jitter keeps parallel writers from colliding again on the next try.
+            await setTimeout(50 * (attempt + 1) + Math.random() * 150);
         }
     }
     throw new Error("Storage update failed");
