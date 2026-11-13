@@ -57,7 +57,7 @@ export function latestTurnTrace(events: readonly SessionStreamEvent[]): TurnTrac
                 }
                 break;
             case "call.requested":
-                if (event.data.capability.kind !== "tool") break;
+                if (event.data.capability.kind !== "tool" && event.data.capability.kind !== "skill") break;
                 calls.set(event.data.callId, {name: event.data.capability.name, at: at(event)});
                 trace.events.push({
                     kind: "tool_start",

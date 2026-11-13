@@ -1,5 +1,4 @@
 ---
-name: find-a-stay
 description: >-
   Use when the user wants to find, compare or choose a hotel, or asks about a hotel's rooms in chat. Covers picking the search, showing the options, and what to do when nothing fits.
 ---

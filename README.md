@@ -24,7 +24,7 @@ pnpm dev                                           # the agent on :3200 and the 
 
 Open http://localhost:3000. Try "Find me a hotel in Le Marais, Paris for 4 to 6 December, two of us", open a card, select a room, tap Pay, then ask it to cancel.
 
-The repo is a pnpm workspace run with [Turborepo](https://turborepo.com). `pnpm dev`, `pnpm build` and `pnpm typecheck` run the task in every app and package. To run one app, filter it: `pnpm --filter @acme/agent dev` (eve on http://127.0.0.1:3200) or `pnpm --filter web dev` (Next.js on http://localhost:3000). `pnpm --filter @acme/agent info` shows what eve discovered: one system instruction and 15 tools.
+The repo is a pnpm workspace run with [Turborepo](https://turborepo.com). `pnpm dev`, `pnpm build` and `pnpm typecheck` run the task in every app and package. To run one app, filter it: `pnpm --filter @acme/agent dev` (eve on http://127.0.0.1:3200) or `pnpm --filter web dev` (Next.js on http://localhost:3000). `pnpm --filter @acme/agent info` shows what eve discovered: the instructions, the find-a-stay skill and 14 tools.
 
 ## Environment
 
@@ -62,16 +62,15 @@ apps/
 ├── agent/                       @acme/agent: the eve app, the only server
 │   └── agent/
 │       ├── agent.ts             model from the environment, eve's default tools off
-│       ├── instructions.ts      the system prompt with its skill catalog and a note on the Pay button
+│       ├── instructions.md      the system prompt, as plain markdown
+│       ├── skills/find-a-stay.md the playbook for searching and choosing a hotel, loaded on demand
 │       ├── channels/eve.ts      eve's session API: localDev() auth, and the per-turn context
 │       ├── channels/hotels.ts   GET /acme/v1/hotel-page, the hotel page a card opens
-│       ├── tools/<name>.ts      the 15 tools, one file each
+│       ├── tools/<name>.ts      the 14 tools, one file each
 │       └── lib/
 │           ├── travel.ts        what the tools share: schemas, stay rules, offer lookup, the JSON the model reads
 │           ├── turnContext.ts   <now>, <location>, <account>, <traveller_profile>, <plans>
-│           ├── model.ts         AI Gateway id, or an OpenAI-compatible server
-│           ├── prompts/         the system prompt
-│           └── skills/          find-a-stay, the playbook for searching and choosing a hotel
+│           └── model.ts         AI Gateway id, or an OpenAI-compatible server
 └── web/                         web: Next.js 16 + shadcn/ui, frontend only
 packages/
 └── travel/                      @acme/travel: LiteAPI and Exa clients, the JSON store, the demo world, the hotel page
@@ -82,11 +81,10 @@ turbo.json                       dev, build and typecheck across the workspace
 
 **Turn context.** The channel's `onMessage` adds the turn context as eve `clientContext`: when the message was sent, then `<now>` (time, zone, local date, 24h clock), `<location>` (home city, country, currency), `<account>` (name, email, language), and empty `<traveller_profile>` and `<plans>`. It reaches every model call of the turn without being stored in the history. The prompt resolves relative dates against `<now>`, uses concrete dates, picks dates inside a loose timeframe, assumes a near-term weekend for a broad question, and asks only when the dates matter.
 
-**Tools.** Each tool has a plain JSON schema that eve validates. It returns the data the UI renders (hotel cards, the booking widget, booking results) plus `model_output`, the compact JSON the model reads through `toModelOutput`. Offer ids the model sees are short aliases (`of_…`); the supplier's offer id stays in the store.
+**Tools.** Each tool has a plain JSON schema that eve validates. It returns the data the UI renders (hotel cards, the booking widget, booking results) plus `model_output`, the compact JSON the model reads through `toModelOutput`. Offer ids the model sees are short aliases (`of_…`); the supplier's offer id stays in the store. eve lists the find-a-stay skill in the prompt, and the model loads it with eve's built-in `eve__skill` tool before a hotel search.
 
 | Tool | What it does |
 | --- | --- |
-| `skill` | Loads `find-a-stay`, the playbook for searching and choosing a hotel |
 | `search_hotels_by_location`, `search_hotels_by_query` | Rates by place (radius, hotel name) or by AI search, with filters: stars, review count, meal plans, refundable, accessible, sort |
 | `show_hotels` | Hotel cards for up to 6 offers of one stay, with a map view |
 | `get_hotel_details`, `get_hotel_reviews` | One hotel with up to 10 rates and its room types; guest reviews with sentiment |
@@ -113,4 +111,4 @@ turbo.json                       dev, build and typecheck across the workspace
 
 ## Credits
 
-Hotel data in demo mode was recorded from the LiteAPI sandbox; photos belong to their hotels. Maps use [OpenStreetMap](https://www.openstreetmap.org/copyright) tiles through Leaflet. The system prompt's persona section is adapted from published assistant prompts, as noted in its frontmatter.
+Hotel data in demo mode was recorded from the LiteAPI sandbox; photos belong to their hotels. Maps use [OpenStreetMap](https://www.openstreetmap.org/copyright) tiles through Leaflet. The system prompt is adapted from the Muse agent prompts published in asgeirtj/system_prompts_leaks.

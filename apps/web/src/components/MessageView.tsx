@@ -113,7 +113,7 @@ function ToolActivity({part, status, detail}: {part: EveToolPart; status: "runni
                 {status === "running" && <Loader2 className="size-3.5 shrink-0 animate-spin" />}
                 {status === "done" && <Check className="size-3.5 shrink-0" />}
                 {status === "error" && <AlertTriangle className="size-3.5 shrink-0 text-amber-600" />}
-                <span className="truncate">{activityLabel(part.name, input)}</span>
+                <span className="truncate">{part.kind === "skill" ? `Reading the ${part.name} playbook` : activityLabel(part.name, input)}</span>
                 <ChevronRight className="size-3 shrink-0 transition group-data-[state=open]:rotate-90" />
             </CollapsibleTrigger>
             <CollapsibleContent>
@@ -155,8 +155,6 @@ function activityLabel(name: string, input: Record<string, unknown>): string {
             return "Looking up bookings";
         case "get_ride_history":
             return "Checking your ACME rides";
-        case "skill":
-            return "Getting ready";
         case "show_hotels":
             return "Preparing hotel cards";
         default:
