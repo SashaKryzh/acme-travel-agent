@@ -1,21 +1,11 @@
-import {createOpenAI} from "@ai-sdk/openai";
+import {openai} from "@ai-sdk/openai";
 import type {ModelSelection} from "eve/models";
 
-const DEFAULT_MODEL = "anthropic/claude-sonnet-5.5";
-const DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000;
-
 /**
- * The model from the environment, read on every model call. By default AGENT_MODEL is a Vercel AI Gateway id, which
- * eve routes with AI_GATEWAY_API_KEY. With OPENAI_COMPATIBLE_BASE_URL set, it is a model of that Chat Completions
- * server instead; eve has no catalog entry for it, so it gets a context window to know when to compact.
+ * A Vercel AI Gateway model id by default. With OPENAI_BASE_URL set, AGENT_MODEL is a model of that OpenAI-compatible
+ * server instead (the provider reads OPENAI_BASE_URL and OPENAI_API_KEY), and eve gets a context window for it.
  */
 export function modelSelection(): ModelSelection | string {
-    const modelId = process.env.AGENT_MODEL || DEFAULT_MODEL;
-    const baseURL = process.env.OPENAI_COMPATIBLE_BASE_URL;
-    if (baseURL === undefined || baseURL.length === 0) return modelId;
-    const provider = createOpenAI({baseURL, apiKey: process.env.OPENAI_COMPATIBLE_API_KEY ?? "", name: "openai-compatible"});
-    return {
-        model: provider.chat(modelId),
-        modelContextWindowTokens: Number(process.env.AGENT_CONTEXT_WINDOW_TOKENS) || DEFAULT_CONTEXT_WINDOW_TOKENS
-    };
+    const modelId = process.env.AGENT_MODEL || "anthropic/claude-sonnet-5.5";
+    return process.env.OPENAI_BASE_URL ? {model: openai.chat(modelId), modelContextWindowTokens: 200_000} : modelId;
 }

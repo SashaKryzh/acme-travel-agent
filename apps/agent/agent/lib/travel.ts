@@ -9,7 +9,6 @@ import {
     nights,
     resolveStay,
     stayKey,
-    testBookings,
     toHotelOffer,
     toolContext,
     type BookingPerson,
@@ -305,7 +304,6 @@ export async function bookingWidget(ctx: ToolContext, record: BookingRecord): Pr
         price_changed_percent: terms.price_changed_percent,
         holder: person(holder),
         primary_guest: person(guest),
-        test_booking: testBookings(),
         action_label: PAY
     }) as BookingWidget;
 }

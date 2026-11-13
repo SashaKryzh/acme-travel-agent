@@ -2,11 +2,10 @@
 
 import type {BookingResult, BookingWidget, HotelCard} from "@acme/travel";
 import {useEveAgent, type EveMessage} from "eve/react";
-import {Activity, ArrowUp, Loader2, Plane, Plus, Square} from "lucide-react";
+import {ArrowUp, Loader2, Plane, Plus, Square} from "lucide-react";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 import {Button} from "@/components/ui/button";
-import {Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger} from "@/components/ui/sheet";
 import {Textarea} from "@/components/ui/textarea";
 import {messageWithAction, type UiAction} from "@/lib/actions";
 import {latestTurnTrace} from "@/lib/trace";
@@ -80,21 +79,6 @@ export function Chat({sessionId}: {sessionId?: string}) {
                         ACME Travel
                     </a>
                     <div className="ml-auto flex items-center gap-1">
-                        <Sheet>
-                            <SheetTrigger asChild>
-                                <Button variant="ghost" size="sm" className="lg:hidden">
-                                    <Activity /> Trace
-                                </Button>
-                            </SheetTrigger>
-                            <SheetContent className="overflow-y-auto">
-                                <SheetHeader>
-                                    <SheetTitle>Run trace</SheetTitle>
-                                </SheetHeader>
-                                <div className="px-4 pb-4">
-                                    <TracePanel trace={trace} running={busy} />
-                                </div>
-                            </SheetContent>
-                        </Sheet>
                         <Button variant="outline" size="sm" asChild>
                             <a href="/">
                                 <Plus /> New chat

@@ -19,14 +19,10 @@ export interface HotelPage {
         latitude?: number;
         longitude?: number;
         description?: string;
-        important_information?: string;
         checkin_time?: string;
         checkout_time?: string;
         facilities: string[];
         images: string[];
-        guests_praise: string[];
-        guests_criticise: string[];
-        rating_by_category: Array<{name: string; rating: number}>;
     };
     rooms: Array<RoomOffer & {refundable: boolean; photo?: string}>;
 }
@@ -79,7 +75,6 @@ export async function loadHotelPage(ctx: ToolContext, offerId: string): Promise<
             latitude: hotel.location?.latitude,
             longitude: hotel.location?.longitude,
             description: hotel.hotelDescription === undefined ? undefined : stripHtml(hotel.hotelDescription),
-            important_information: hotel.hotelImportantInformation === undefined ? undefined : stripHtml(hotel.hotelImportantInformation),
             checkin_time: hotel.checkinCheckoutTimes?.checkin_start ?? hotel.checkinCheckoutTimes?.checkin,
             checkout_time: hotel.checkinCheckoutTimes?.checkout,
             facilities: hotel.hotelFacilities ?? [],
@@ -90,11 +85,6 @@ export async function loadHotelPage(ctx: ToolContext, offerId: string): Promise<
                     )
                 )
             ].slice(0, PAGE_IMAGES_MAX),
-            guests_praise: hotel.sentiment_analysis?.pros ?? [],
-            guests_criticise: hotel.sentiment_analysis?.cons ?? [],
-            rating_by_category: (hotel.sentiment_analysis?.categories ?? []).flatMap((category) =>
-                category.name === undefined || category.rating === undefined ? [] : [{name: category.name, rating: category.rating}]
-            )
         }),
         rooms: rooms.map((room) =>
             compact({

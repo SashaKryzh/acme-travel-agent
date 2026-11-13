@@ -1,4 +1,3 @@
-import {requiredEnv} from "../config";
 import {requestJson} from "../http";
 import type {
     NuiteeBookRequest,
@@ -26,10 +25,6 @@ export type NuiteeApi = Pick<
 
 export class NuiteeClient {
     public constructor(private readonly apiKey: string) {}
-
-    public static fromEnv(): NuiteeClient {
-        return new NuiteeClient(requiredEnv("NUITEE_API_KEY"));
-    }
 
     public async searchPlaces(textQuery: string, signal?: AbortSignal): Promise<NuiteePlace[]> {
         const response = await this.data<{data: NuiteePlace[]}>("/data/places", {query: {textQuery, language: "en"}, signal});

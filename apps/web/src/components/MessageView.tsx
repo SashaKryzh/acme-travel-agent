@@ -2,7 +2,7 @@
 
 import type {BookingResult, BookingWidget, HotelCard, HotelGroup, WebSource} from "@acme/travel";
 import type {EveMessage, EveMessagePart, EveToolPart} from "eve/react";
-import {AlertTriangle, Brain, Check, ChevronRight, Globe, Loader2, MousePointerClick} from "lucide-react";
+import {AlertTriangle, Brain, Check, Globe, Loader2, MousePointerClick} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -105,61 +105,19 @@ function ToolPart({part, actions}: {part: EveToolPart; actions: MessageActions})
     }
 }
 
+/** A tool call as one line: eve's label for it, and whether it is running, done or failed. */
 function ToolActivity({part, status, detail}: {part: EveToolPart; status: "running" | "done" | "error"; detail?: string}) {
-    const input = (part.input ?? {}) as Record<string, unknown>;
     return (
-        <Collapsible className="group text-xs text-muted-foreground" data-testid="tool-activity" data-tool={part.name}>
-            <CollapsibleTrigger className="flex max-w-full min-w-0 items-center gap-1.5 py-0.5 text-left hover:text-foreground">
-                {status === "running" && <Loader2 className="size-3.5 shrink-0 animate-spin" />}
-                {status === "done" && <Check className="size-3.5 shrink-0" />}
-                {status === "error" && <AlertTriangle className="size-3.5 shrink-0 text-amber-600" />}
-                <span className="truncate">{part.kind === "skill" ? `Reading the ${part.name} playbook` : activityLabel(part.name, input)}</span>
-                <ChevronRight className="size-3 shrink-0 transition group-data-[state=open]:rotate-90" />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-                <pre className="mt-1 max-h-48 overflow-auto rounded-lg bg-muted p-2 font-mono text-[11px]">
-                    {part.name}
-                    {"\n"}
-                    {JSON.stringify(part.input ?? part.inputText, null, 2)}
-                    {detail !== undefined && `\n\nError: ${detail}`}
-                </pre>
-            </CollapsibleContent>
-        </Collapsible>
+        <div className="flex min-w-0 items-center gap-1.5 py-0.5 text-xs text-muted-foreground" data-testid="tool-activity" data-tool={part.name}>
+            {status === "running" && <Loader2 className="size-3.5 shrink-0 animate-spin" />}
+            {status === "done" && <Check className="size-3.5 shrink-0" />}
+            {status === "error" && <AlertTriangle className="size-3.5 shrink-0 text-amber-600" />}
+            <span className="truncate">
+                {part.label}
+                {detail !== undefined && `: ${detail}`}
+            </span>
+        </div>
     );
-}
-
-function activityLabel(name: string, input: Record<string, unknown>): string {
-    const text = (key: string) => (typeof input[key] === "string" ? (input[key] as string) : "");
-    switch (name) {
-        case "search_hotels_by_location":
-            return `Searching hotels in ${text("place")}`;
-        case "search_hotels_by_query":
-            return `Searching "${text("query")}"`;
-        case "get_hotel_details":
-            return "Reading hotel details and rooms";
-        case "get_hotel_reviews":
-            return "Reading guest reviews";
-        case "web_search":
-            return `Researching: ${text("query")}`;
-        case "prebook":
-            return "Checking the final price";
-        case "update_booking_widget":
-            return "Updating the guest details";
-        case "book":
-            return "Booking";
-        case "cancel_booking":
-            return "Cancelling the booking";
-        case "get_booking":
-        case "list_bookings":
-        case "get_prebook":
-            return "Looking up bookings";
-        case "get_ride_history":
-            return "Checking your ACME rides";
-        case "show_hotels":
-            return "Preparing hotel cards";
-        default:
-            return name;
-    }
 }
 
 /** show_hotels again for the same stay replaces its cards, so only the latest group per stay in a reply is shown. */

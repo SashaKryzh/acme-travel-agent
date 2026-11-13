@@ -1,4 +1,3 @@
-import {requiredEnv} from "../config";
 import {requestJson} from "../http";
 
 const EXA_API = "https://api.exa.ai";
@@ -24,10 +23,6 @@ export type ExaApi = Pick<ExaClient, "createAgentRun" | "getAgentRun" | "cancelA
 /** Exa's research agent: it searches, reads the pages and writes a sourced answer. */
 export class ExaClient {
     public constructor(private readonly apiKey: string) {}
-
-    public static fromEnv(): ExaClient {
-        return new ExaClient(requiredEnv("EXA_API_KEY"));
-    }
 
     public createAgentRun(request: {query: string; systemPrompt: string; effort: ExaAgentEffort}): Promise<ExaAgentRun> {
         return this.agentCall("/agent/runs", "POST", request);

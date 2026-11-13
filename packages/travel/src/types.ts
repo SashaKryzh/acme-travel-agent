@@ -91,8 +91,6 @@ export interface BookingWidget {
     /** Who books, and who stays: the same person unless the user booked for someone else. */
     holder: {name: string; email: string} | null;
     primary_guest: {name: string; email: string} | null;
-    /** False when a live supplier key could book for real. */
-    test_booking: boolean;
     action_label: string;
 }
 

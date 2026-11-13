@@ -1,7 +1,7 @@
 "use client";
 
 import type {HotelCard, HotelPage} from "@acme/travel";
-import {BedDouble, Clock, Loader2, MapPin, MessageCircle, ThumbsDown, ThumbsUp} from "lucide-react";
+import {BedDouble, Clock, Loader2, MapPin, MessageCircle} from "lucide-react";
 import {useEffect, useState} from "react";
 
 import {Badge} from "@/components/ui/badge";
@@ -12,8 +12,6 @@ import {dateRange, guests, money} from "@/lib/format";
 
 import {Rating, Stars} from "./cards/HotelGroupCard";
 import {HotelMap} from "./map/HotelMap";
-
-const FACILITIES_SHOWN = 18;
 
 /** The hotel page a card opens: photos, the map, every room for the card's stay, and what guests say. */
 export function HotelSheet({
@@ -31,12 +29,10 @@ export function HotelSheet({
 }) {
     const [page, setPage] = useState<HotelPage | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [allFacilities, setAllFacilities] = useState(false);
 
     useEffect(() => {
         setPage(null);
         setError(null);
-        setAllFacilities(false);
         if (card === null || sessionId === undefined) return;
         const controller = new AbortController();
         const query = new URLSearchParams({sessionId, offerId: card.offer_id});
@@ -166,21 +162,6 @@ export function HotelSheet({
                             </ul>
                         </section>
 
-                        {(hotel.guests_praise.length > 0 || hotel.guests_criticise.length > 0) && (
-                            <section className="grid gap-3 px-4 sm:grid-cols-2">
-                                <SentimentList title="Guests love" items={hotel.guests_praise} positive />
-                                <SentimentList title="Watch out for" items={hotel.guests_criticise} positive={false} />
-                            </section>
-                        )}
-                        {hotel.rating_by_category.length > 0 && (
-                            <section className="flex flex-wrap gap-1.5 px-4">
-                                {hotel.rating_by_category.map((category) => (
-                                    <Badge key={category.name} variant="secondary">
-                                        {category.name} {category.rating}
-                                    </Badge>
-                                ))}
-                            </section>
-                        )}
                         {hotel.description !== undefined && (
                             <section className="px-4">
                                 <h3 className="mb-1 text-sm font-semibold">About</h3>
@@ -191,45 +172,17 @@ export function HotelSheet({
                             <section className="px-4">
                                 <h3 className="mb-2 text-sm font-semibold">Facilities</h3>
                                 <div className="flex flex-wrap gap-1.5">
-                                    {(allFacilities ? facilities : facilities.slice(0, FACILITIES_SHOWN)).map((facility) => (
+                                    {facilities.map((facility) => (
                                         <Badge key={facility} variant="outline">
                                             {facility}
                                         </Badge>
                                     ))}
-                                    {facilities.length > FACILITIES_SHOWN && !allFacilities && (
-                                        <Button variant="link" size="xs" onClick={() => setAllFacilities(true)}>
-                                            +{facilities.length - FACILITIES_SHOWN} more
-                                        </Button>
-                                    )}
                                 </div>
-                            </section>
-                        )}
-                        {hotel.important_information !== undefined && (
-                            <section className="px-4">
-                                <h3 className="mb-1 text-sm font-semibold">Good to know</h3>
-                                <p className="text-xs leading-relaxed text-muted-foreground">{hotel.important_information}</p>
                             </section>
                         )}
                     </div>
                 )}
             </SheetContent>
         </Sheet>
-    );
-}
-
-function SentimentList({title, items, positive}: {title: string; items: string[]; positive: boolean}) {
-    if (items.length === 0) return null;
-    const Icon = positive ? ThumbsUp : ThumbsDown;
-    return (
-        <div className="rounded-xl bg-muted/60 p-3">
-            <div className="mb-1 flex items-center gap-1 text-xs font-semibold">
-                <Icon className="size-3.5" /> {title}
-            </div>
-            <ul className="space-y-0.5 text-xs text-muted-foreground">
-                {items.slice(0, 6).map((item) => (
-                    <li key={item}>• {item}</li>
-                ))}
-            </ul>
-        </div>
     );
 }

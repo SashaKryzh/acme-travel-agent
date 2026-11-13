@@ -14,7 +14,6 @@ import {loadWorld} from "./world/world";
 export interface ToolContext {
     sessionId: string;
     store: TravelStore;
-    /** Lazy, so a missing API key only fails the tools that need it. */
     nuitee: () => NuiteeApi;
     exa: () => ExaApi;
     rides: () => RideHistoryApi;
@@ -41,9 +40,9 @@ function toolClients(): Clients {
         const exa = new WorldExa(world);
         clients = {nuitee: () => nuitee, exa: () => exa, rides: () => rides};
     } else {
-        let nuitee: NuiteeClient | undefined;
-        let exa: ExaClient | undefined;
-        clients = {nuitee: () => (nuitee ??= NuiteeClient.fromEnv()), exa: () => (exa ??= ExaClient.fromEnv()), rides: () => rides};
+        const nuitee = new NuiteeClient(process.env.NUITEE_API_KEY ?? "");
+        const exa = new ExaClient(process.env.EXA_API_KEY ?? "");
+        clients = {nuitee: () => nuitee, exa: () => exa, rides: () => rides};
     }
     return clients;
 }
