@@ -1,0 +1,11 @@
+node_modules
+.next
+.env*
+!.env.example
+data/
+*.tsbuildinfo
+.DS_Store
+
+# eve build and dev state
+.eve/
+.output/
