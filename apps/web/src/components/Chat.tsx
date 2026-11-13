@@ -2,7 +2,7 @@
 
 import type {BookingResult, BookingWidget, HotelCard} from "@acme/travel";
 import {useEveAgent, type EveMessage, type Interaction} from "eve/react";
-import {ArrowUp, Loader2, Plane, Plus, Square} from "lucide-react";
+import {ArrowUp, Brain, Loader2, Plane, Plus, Square} from "lucide-react";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 import {Button} from "@/components/ui/button";
@@ -81,6 +81,11 @@ export function Chat({sessionId}: {sessionId?: string}) {
                         ACME Travel
                     </a>
                     <div className="ml-auto flex items-center gap-1">
+                        <Button variant="ghost" size="sm" asChild>
+                            <a href="/memory" target="_blank" rel="noopener">
+                                <Brain /> Memory
+                            </a>
+                        </Button>
                         <Button variant="outline" size="sm" asChild>
                             <a href="/">
                                 <Plus /> New chat
