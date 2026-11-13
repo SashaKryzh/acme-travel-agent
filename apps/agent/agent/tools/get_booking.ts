@@ -1,19 +1,18 @@
-import {fail, travelTool, mapBooking, output, omitEmpty} from "../lib/travel";
+import {defineTool} from "eve/tools";
+import {z} from "zod";
 
-export default travelTool({
+import {json, mapBooking, travel} from "../lib/travel";
+
+export default defineTool({
     description: "Fetch a booking by booking_id.",
-    parameters: {type: "object", properties: {booking_id: {type: "string"}}, required: ["booking_id"], additionalProperties: false},
-    async run(args, ctx) {
-        const bookingId = String(args.booking_id);
+    inputSchema: z.object({booking_id: z.string()}),
+    async execute({booking_id}, ctx) {
+        const trip = travel(ctx);
         // Only the user's own bookings: the store holds what this agent booked.
-        const record = await ctx.store.findBooking((item) => item.booking_id === bookingId);
-        if (record === undefined) fail("Error: booking not found");
-        const booking = await ctx
-            .nuitee()
-            .getBooking(bookingId)
-            .catch((error: unknown) => fail(`Error: get booking failed (${error instanceof Error ? error.message : String(error)})`));
-        if (booking === undefined) fail("Error: booking not found");
-        const model = omitEmpty(mapBooking(booking)) as object;
-        return output(model, model);
-    }
+        if ((await trip.store.findBooking((item) => item.booking_id === booking_id)) === undefined) throw new Error("Booking not found");
+        const booking = await trip.nuitee().getBooking(booking_id);
+        if (booking === undefined) throw new Error("Booking not found");
+        return mapBooking(booking);
+    },
+    toModelOutput: json
 });

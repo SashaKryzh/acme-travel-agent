@@ -1,6 +1,7 @@
 "use client";
 
 import type {BookingResult, BookingWidget} from "@acme/travel";
+import type {Interaction} from "eve/react";
 import {CalendarDays, CheckCircle2, CreditCard, ShieldCheck, UserRound, Users, XCircle} from "lucide-react";
 
 import {Button} from "@/components/ui/button";
@@ -8,20 +9,24 @@ import {Card, CardContent, CardFooter, CardHeader} from "@/components/ui/card";
 import {dateRange, guests, money} from "@/lib/format";
 import {cn} from "@/lib/utils";
 
-/** "booked" once book went through for this prebook, "replaced" when a newer widget for it is shown below. */
-export type WidgetState = "open" | "booked" | "replaced";
+/**
+ * "pay" while book waits for the user's approval, "waiting" until the agent asks for it, "booked" once book went
+ * through, and "replaced" when a newer widget for the same prebook is shown below.
+ */
+export type WidgetState = {state: "pay"; approval: Interaction} | {state: "waiting" | "booked" | "replaced"};
 
 export function BookingWidgetCard({
     widget,
-    state,
+    status,
     disabled,
-    onPay
+    onRespond
 }: {
     widget: BookingWidget;
-    state: WidgetState;
+    status: WidgetState;
     disabled: boolean;
-    onPay: (widget: BookingWidget) => void;
+    onRespond: (interactionId: string, optionId: string) => void;
 }) {
+    const state = status.state;
     return (
         <Card className={cn("my-2 max-w-md gap-0 py-0", state === "replaced" && "opacity-60")} data-testid="booking-widget">
             <CardHeader className="flex gap-3 p-3">
@@ -66,15 +71,24 @@ export function BookingWidgetCard({
                         <div className="text-xs text-amber-700">Price changed {widget.price_changed_percent}% since search</div>
                     )}
                 </div>
-                {state === "booked" ? (
+                {status.state === "booked" ? (
                     <span className="flex items-center gap-1 text-sm font-medium">
                         <CheckCircle2 className="size-4" /> Booked
                     </span>
-                ) : state === "replaced" ? (
+                ) : status.state === "replaced" ? (
                     <span className="text-xs text-muted-foreground">Updated below</span>
+                ) : status.state === "pay" ? (
+                    <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => onRespond(status.approval.interactionId, "deny")} data-testid="decline">
+                            Not now
+                        </Button>
+                        <Button onClick={() => onRespond(status.approval.interactionId, "approve")} data-testid="pay">
+                            <CreditCard /> Pay
+                        </Button>
+                    </div>
                 ) : (
-                    <Button disabled={disabled} onClick={() => onPay(widget)} data-testid="pay">
-                        <CreditCard /> {widget.action_label}
+                    <Button disabled title={disabled ? "Getting the booking ready" : "Ask the agent to book it"} data-testid="pay">
+                        <CreditCard /> Pay
                     </Button>
                 )}
             </CardFooter>

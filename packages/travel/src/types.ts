@@ -91,7 +91,6 @@ export interface BookingWidget {
     /** Who books, and who stays: the same person unless the user booked for someone else. */
     holder: {name: string; email: string} | null;
     primary_guest: {name: string; email: string} | null;
-    action_label: string;
 }
 
 /** What book and cancel_booking show: the booking's state after the call. */

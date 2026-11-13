@@ -1,11 +1,12 @@
 "use client";
 
 import type {BookingResult, BookingWidget, HotelCard, HotelGroup, WebSource} from "@acme/travel";
-import type {EveMessage, EveMessagePart, EveToolPart} from "eve/react";
-import {AlertTriangle, Brain, Check, Globe, Loader2, MousePointerClick} from "lucide-react";
+import type {EveMessage, EveMessagePart, EveToolPart, Interaction} from "eve/react";
+import {AlertTriangle, Brain, Check, FileText, Globe, Loader2, MousePointerClick} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import {Button} from "@/components/ui/button";
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible";
 import {visibleText} from "@/lib/actions";
 
@@ -15,7 +16,7 @@ import {HotelGroupCard} from "./cards/HotelGroupCard";
 export interface MessageActions {
     busy: boolean;
     widgetState: (widget: BookingWidget, callId: string) => WidgetState;
-    pay: (widget: BookingWidget) => void;
+    respond: (interactionId: string, optionId: string) => void;
     openHotel: (hotel: HotelCard) => void;
 }
 
@@ -84,8 +85,14 @@ function AssistantPart({part, actions}: {part: EveMessagePart; actions: MessageA
 }
 
 function ToolPart({part, actions}: {part: EveToolPart; actions: MessageActions}) {
+    const asked = part.interaction;
+    if (asked?.status === "open") {
+        // The booking widget above holds the Pay button for book's approval.
+        return part.name === "book" ? null : <InteractionCard interaction={asked} disabled={actions.busy} onRespond={actions.respond} />;
+    }
     if (part.state === "failed" || part.state === "rejected" || part.state === "cancelled") {
-        return <ToolActivity part={part} status="error" detail={part.error?.message ?? part.state} />;
+        const detail = asked?.outcome === "declined" ? "you said not now" : asked?.outcome === "withdrawn" ? "dropped for your new message" : (part.error?.message ?? part.state);
+        return <ToolActivity part={part} status="error" detail={detail} />;
     }
     if (part.state !== "completed" || part.output === undefined) return <ToolActivity part={part} status="running" />;
     switch (part.name) {
@@ -94,15 +101,42 @@ function ToolPart({part, actions}: {part: EveToolPart; actions: MessageActions})
         case "prebook":
         case "update_booking_widget": {
             const widget = part.output as BookingWidget;
-            return <BookingWidgetCard widget={widget} state={actions.widgetState(widget, part.callId)} disabled={actions.busy} onPay={actions.pay} />;
+            return <BookingWidgetCard widget={widget} status={actions.widgetState(widget, part.callId)} disabled={actions.busy} onRespond={actions.respond} />;
         }
         case "book":
             return <BookingResultCard result={part.output as BookingResult} kind="book" />;
         case "cancel_booking":
             return <BookingResultCard result={part.output as BookingResult} kind="cancel" />;
+        case "write_file":
+            return <FileCard input={part.input as {filePath: string; content: string}} />;
         default:
             return <ToolActivity part={part} status="done" />;
     }
+}
+
+/** A question or an approval the agent is waiting on, answered with one of its options or, for a question, in the chat. */
+function InteractionCard({interaction, disabled, onRespond}: {interaction: Interaction; disabled: boolean; onRespond: (interactionId: string, optionId: string) => void}) {
+    const {request} = interaction;
+    return (
+        <div className="my-2 max-w-md space-y-2 rounded-xl border bg-card p-3 text-sm" data-testid="interaction" data-kind={request.kind}>
+            <p>{request.prompt}</p>
+            <div className="flex flex-wrap gap-2">
+                {(request.options ?? []).map((option) => (
+                    <Button
+                        key={option.id}
+                        size="sm"
+                        variant={option.style === "danger" ? "destructive" : "outline"}
+                        disabled={disabled && request.kind !== "approval"}
+                        title={option.description}
+                        onClick={() => onRespond(interaction.interactionId, option.id)}
+                    >
+                        {option.label}
+                    </Button>
+                ))}
+            </div>
+            {request.allowFreeform === true && <p className="text-xs text-muted-foreground">Or answer in the chat.</p>}
+        </div>
+    );
 }
 
 /** A tool call as one line: eve's label for it, and whether it is running, done or failed. */
@@ -135,13 +169,28 @@ function replacedHotelGroups(parts: readonly EveMessagePart[]): Set<string> {
     return replaced;
 }
 
+/** A document the agent wrote to its workspace, such as an itinerary: shown in full, since the user can't open the file. */
+function FileCard({input}: {input: {filePath: string; content: string}}) {
+    return (
+        <Collapsible defaultOpen className="my-2 rounded-xl border bg-card" data-testid="file-card">
+            <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium">
+                <FileText className="size-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">{input.filePath.split("/").at(-1)}</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="prose-chat border-t px-3 py-2 text-sm">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{input.content}</ReactMarkdown>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
 function collectSources(parts: readonly EveMessagePart[]): WebSource[] {
     const sources = new Map<string, WebSource>();
     for (const part of parts) {
         if (part.type !== "tool" || part.name !== "web_search" || part.state !== "completed") continue;
-        for (const source of ((part.output as {sources?: WebSource[]} | undefined)?.sources ?? []).slice(0, 6)) sources.set(source.url, source);
+        for (const source of (part.output as {sources?: WebSource[]} | undefined)?.sources ?? []) sources.set(source.url, source);
     }
-    return [...sources.values()];
+    return [...sources.values()].slice(0, 6);
 }
 
 function Sources({sources}: {sources: WebSource[]}) {

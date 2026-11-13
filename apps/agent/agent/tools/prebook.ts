@@ -1,48 +1,35 @@
-import {localDate, type BookingWidget} from "@acme/travel";
+import {localDate} from "@acme/travel";
+import {defineTool} from "eve/tools";
+import {z} from "zod";
 
-import {bookingWidget, fail, travelTool, mapPrebook, mapRoomTerms, output, accountGuest, omitEmpty, prebookTerms} from "../lib/travel";
+import {accountGuest, bookingWidget, json, mapRoomTerms, prebookTerms, travel, widgetForModel} from "../lib/travel";
 
-export default travelTool<BookingWidget>({
+export default defineTool({
     description:
         "Run when the user selects a room to show the room booking widget with the Pay button in your reply. Pass its offer_id. From chat, the user names a room type or room name: take the offer_id from that room in get_hotel_details. Returns the final price and a prebook_id, and attaches the booking widget to your reply. Call it as soon as the room is clear. Do not wait to be asked. Do not say the room is already booked.",
-    parameters: {
-        type: "object",
-        properties: {offer_id: {type: "string", description: "Offer id from hotel search or room rates"}},
-        required: ["offer_id"],
-        additionalProperties: false
-    },
-    async run(args, ctx) {
-        const offerId = String(args.offer_id);
-        const priced = (await ctx.store.getOffers(ctx.sessionId))[offerId];
-        if (priced === undefined) fail("Error: unknown offer id, search again or call get_hotel_details for that hotel to refresh it");
+    inputSchema: z.object({offer_id: z.string().describe("Offer id from hotel search or room rates")}),
+    async execute({offer_id}, ctx) {
+        const trip = travel(ctx);
+        const priced = (await trip.store.getOffers(trip.sessionId))[offer_id];
+        if (priced === undefined) throw new Error("Unknown offer id, search again or call get_hotel_details for that hotel to refresh it");
         const {offer, stay} = priced;
-        if (stay.checkin < localDate(ctx.now, ctx.account.time_zone)) {
-            fail(`Error: the check-in date ${stay.checkin} has passed, ask the user for new dates`);
-        }
-        let prebook;
-        try {
-            prebook = await ctx.nuitee().prebook(offer.nuitee_offer_id);
-        } catch (error: unknown) {
-            const details = {
-                hotel_id: offer.hotel_id,
-                checkin: stay.checkin,
-                checkout: stay.checkout,
-                adults: stay.adults,
-                children: stay.children.length > 0 ? stay.children : null,
-                currency: stay.currency,
-                guest_nationality: stay.guest_nationality
-            };
-            return fail(
-                `Error: prebook failed (${error instanceof Error ? error.message : String(error)}), the offer may have expired. Call get_hotel_details with ${JSON.stringify(details)}, then prebook the room that matches ${JSON.stringify(mapRoomTerms(offer))}. Tell the user if the price changed. If no room matches, ask the user which one they want.`
-            );
-        }
+        if (stay.checkin < localDate(trip.now, trip.account.time_zone)) throw new Error(`The check-in date ${stay.checkin} has passed, ask the user for new dates`);
+        const prebook = await trip
+            .nuitee()
+            .prebook(offer.nuitee_offer_id)
+            .catch((error: unknown) => {
+                const retry = {hotel_id: offer.hotel_id, checkin: stay.checkin, checkout: stay.checkout, adults: stay.adults, children: stay.children.length > 0 ? stay.children : null};
+                throw new Error(
+                    `Prebook failed (${error instanceof Error ? error.message : String(error)}), the offer may have expired. Call get_hotel_details with ${JSON.stringify(retry)}, then prebook the room that matches ${JSON.stringify(mapRoomTerms(offer))}. Tell the user if the price changed.`
+                );
+            });
         const now = new Date().toISOString();
-        const guest = accountGuest(ctx);
         // The widget is prefilled from the ACME account.
-        const record = await ctx.store.upsertBooking(prebook.prebookId, () => ({
+        const guest = accountGuest(trip);
+        const record = await trip.store.upsertBooking(prebook.prebookId, () => ({
             prebook_id: prebook.prebookId,
-            offer_id: offerId,
-            session_id: ctx.sessionId,
+            offer_id,
+            session_id: trip.sessionId,
             status: "prebooked",
             hotel_id: offer.hotel_id,
             hotel_name: offer.name,
@@ -56,6 +43,7 @@ export default travelTool<BookingWidget>({
             created_at: now,
             updated_at: now
         }));
-        return output(await bookingWidget(ctx, record), omitEmpty(mapPrebook(prebook)));
-    }
+        return bookingWidget(trip, record);
+    },
+    toModelOutput: (widget) => json(widgetForModel(widget))
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import type {BookingResult, BookingWidget, HotelCard} from "@acme/travel";
-import {useEveAgent, type EveMessage} from "eve/react";
+import {useEveAgent, type EveMessage, type Interaction} from "eve/react";
 import {ArrowUp, Loader2, Plane, Plus, Square} from "lucide-react";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 
@@ -51,17 +51,19 @@ export function Chat({sessionId}: {sessionId?: string}) {
     );
 
     const actions: MessageActions = useMemo(() => {
-        const {widgets, booked} = bookingState(agent.messages);
+        const {widgets, booked, awaitingPay} = bookingState(agent.messages);
         return {
             busy: busy || resuming,
             widgetState: (widget, callId) => {
-                if (booked.has(widget.prebook_id)) return "booked";
-                return widgets.get(widget.prebook_id) === callId ? "open" : "replaced";
+                if (booked.has(widget.prebook_id)) return {state: "booked"};
+                if (widgets.get(widget.prebook_id) !== callId) return {state: "replaced"};
+                const approval = awaitingPay.get(widget.prebook_id);
+                return approval === undefined ? {state: "waiting"} : {state: "pay", approval};
             },
-            pay: (widget: BookingWidget) => send(widget.action_label, {type: "pay", prebook_id: widget.prebook_id}),
+            respond: (interactionId, optionId) => void agent.respond([{interactionId, optionId}]).catch(() => undefined),
             openHotel: setOpenHotel
         };
-    }, [agent.messages, busy, resuming, send]);
+    }, [agent, busy, resuming]);
 
     const submit = () => {
         send(input);
@@ -183,16 +185,21 @@ export function Chat({sessionId}: {sessionId?: string}) {
     );
 }
 
-/** For each prebook, the call that showed its latest widget, and the prebooks that book went through for. */
-function bookingState(messages: readonly EveMessage[]): {widgets: Map<string, string>; booked: Set<string>} {
+/** For each prebook: the call that showed its latest widget, whether book went through, and a book call waiting for Pay. */
+function bookingState(messages: readonly EveMessage[]) {
     const widgets = new Map<string, string>();
     const booked = new Set<string>();
+    const awaitingPay = new Map<string, Interaction>();
     for (const message of messages) {
         for (const part of message.parts) {
-            if (part.type !== "tool" || part.state !== "completed" || part.output === undefined) continue;
+            if (part.type !== "tool") continue;
+            if (part.name === "book" && part.interaction?.status === "open" && part.interaction.request.kind === "approval") {
+                awaitingPay.set((part.input as {prebook_id: string}).prebook_id, part.interaction);
+            }
+            if (part.state !== "completed" || part.output === undefined) continue;
             if (part.name === "prebook" || part.name === "update_booking_widget") widgets.set((part.output as BookingWidget).prebook_id, part.callId);
             if (part.name === "book" && (part.output as BookingResult).status === "booked") booked.add((part.output as BookingResult).prebook_id);
         }
     }
-    return {widgets, booked};
+    return {widgets, booked, awaitingPay};
 }

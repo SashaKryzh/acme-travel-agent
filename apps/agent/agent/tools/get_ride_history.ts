@@ -1,60 +1,40 @@
-import {fail, travelTool, output} from "../lib/travel";
+import {defineTool} from "eve/tools";
+import {z} from "zod";
+
+import {travel} from "../lib/travel";
 
 const WINDOW_DAYS = 30;
 const LIMIT = 100;
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const DAY = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-export default travelTool({
+export default defineTool({
     description: `Fetch this user's finished ACME rides between two dates. Call it when they ask about rides or places they went with ACME. Pick from_date and to_date from what they asked; leave both null for the last ${WINDOW_DAYS} days. A ride's started time is its scheduled pickup, or the booking time when it was not scheduled.`,
-    parameters: {
-        type: "object",
-        properties: {
-            from_date: {
-                type: ["string", "null"],
-                description: `First day to include, YYYY-MM-DD, in the user's local timezone. Null for ${WINDOW_DAYS} days ago.`
-            },
-            to_date: {
-                type: ["string", "null"],
-                description: "Last day to include, YYYY-MM-DD, in the user's local timezone, not after today and not before from_date. Null for today."
-            },
-            time_zone: {
-                type: ["string", "null"],
-                description:
-                    "IANA time zone, such as Europe/Warsaw. Pass it when the user's zone is unknown, after they name their city or zone. A city name is not a zone. Null when the message already has a zone."
-            }
-        },
-        required: ["from_date", "to_date", "time_zone"],
-        additionalProperties: false
-    },
-    async run(args, ctx) {
-        const rides = ctx.rides();
+    inputSchema: z.object({
+        from_date: DAY.nullable().describe(`First day to include, YYYY-MM-DD, in the user's local timezone. Null for ${WINDOW_DAYS} days ago.`),
+        to_date: DAY.nullable().describe("Last day to include, YYYY-MM-DD, in the user's local timezone, not after today and not before from_date. Null for today."),
+        time_zone: z
+            .string()
+            .nullable()
+            .describe("IANA time zone, such as Europe/Warsaw. Pass it when the user's zone is unknown, after they name their city or zone. A city name is not a zone. Null when the message already has a zone.")
+    }),
+    async execute(input, ctx) {
+        const trip = travel(ctx);
         // The account's zone wins; time_zone covers an account without one.
-        const zone = validZone(ctx.account.time_zone) ?? validZone(args.time_zone);
+        const zone = validZone(trip.account.time_zone) ?? validZone(input.time_zone);
         if (zone === undefined) {
-            fail("Error: the user's time zone is unknown. Ask for their city or time zone, then call again with time_zone set to an IANA zone such as Europe/Warsaw.");
+            throw new Error("The user's time zone is unknown. Ask for their city or time zone, then call again with time_zone set to an IANA zone such as Europe/Warsaw.");
         }
-        const today = localDay(ctx.now, zone);
-        const from = args.from_date ?? addDays(today, -WINDOW_DAYS);
-        const to = args.to_date ?? today;
-        if (typeof from !== "string" || typeof to !== "string" || !DAY.test(from) || !DAY.test(to) || to > today || from > to) {
-            fail("Error: invalid date range. Use YYYY-MM-DD, not after today, with from_date not after to_date.");
-        }
-        const found = await rides
-            .finishedRides(startOfLocalDay(from, zone), startOfLocalDay(addDays(to, 1), zone), LIMIT)
-            .catch(() => fail("Error: ride history failed"));
-        const history = {
+        const today = localDay(trip.now, zone);
+        const from = input.from_date ?? addDays(today, -WINDOW_DAYS);
+        const to = input.to_date ?? today;
+        if (to > today || from > to) throw new Error("Invalid date range. Use YYYY-MM-DD, not after today, with from_date not after to_date.");
+        const found = await trip.rides().finishedRides(startOfLocalDay(from, zone), startOfLocalDay(addDays(to, 1), zone), LIMIT);
+        return {
             from_date: from,
             to_date: to,
-            rides: found.map((ride) => ({
-                started: ride.started,
-                pickup: ride.pickup,
-                destination: ride.destination,
-                price: ride.price,
-                currency: ride.currency
-            })),
+            rides: found.map(({started, pickup, destination, price, currency}) => ({started, pickup, destination, price, currency})),
             ...(found.length === LIMIT ? {truncated: true} : {})
         };
-        return output(history, history);
     }
 });
 

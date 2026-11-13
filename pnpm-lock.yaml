@@ -17,9 +17,6 @@ importers:
       '@acme/travel':
         specifier: workspace:*
         version: link:../../packages/travel
-      '@ai-sdk/openai':
-        specifier: 4.0.104
-        version: 4.0.104(zod@4.6.7)
       ai:
         specifier: 7.0.156
         version: 7.0.156(zod@4.6.7)
@@ -124,12 +121,6 @@ packages:
 
   '@ai-sdk/gateway@4.0.129':
     resolution: {integrity: sha512-8JvaQBaIfM8jo54kg+picQpY9qBzP/hG+YIXJO9KDL+9RpdoTjzp0/mH7XjfaqNMHAf85dM2/tCBDOOyBN7Bgg==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
-  '@ai-sdk/openai@4.0.104':
-    resolution: {integrity: sha512-8oPwGh/zAdFrgyeGjTHlJMRm+DBwby3GkdGzN3vcNv4OwVtc1767mcM+7B2+gOxtloasZH+03gl+HPngQyQTMg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -3141,12 +3132,6 @@ snapshots:
       '@ai-sdk/provider': 4.0.34
       '@ai-sdk/provider-utils': 5.0.70(zod@4.6.7)
       '@vercel/oidc': 3.2.0
-      zod: 4.6.7
-
-  '@ai-sdk/openai@4.0.104(zod@4.6.7)':
-    dependencies:
-      '@ai-sdk/provider': 4.0.34
-      '@ai-sdk/provider-utils': 5.0.70(zod@4.6.7)
       zod: 4.6.7
 
   '@ai-sdk/provider-utils@5.0.70(zod@4.6.7)':
